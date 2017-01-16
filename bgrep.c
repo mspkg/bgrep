@@ -50,6 +50,8 @@ const unsigned int MAX_PATTERN=256; /* 0x100 */
 const unsigned int BUFFER_SIZE=1024; /* 0x400 */
 
 int bytes_before = 0, bytes_after = 0;
+int first_only = 0;
+int print_count = 0;
 
 void die(const char* msg, ...);
 
@@ -134,8 +136,10 @@ void dump_context(int fd, unsigned long long pos)
 	}
 }
 
-void searchfile(const char *filename, int fd, const unsigned char *value, const unsigned char *mask, int len)
+int searchfile(const char *filename, int fd, const unsigned char *value, const unsigned char *mask, int len)
 {
+	int result = 0;
+	int count = 0;
 	unsigned char buf[BUFFER_SIZE];
 	const int lenm1 = len-1;
 	const unsigned char *endp = buf+BUFFER_SIZE;
@@ -152,7 +156,7 @@ void searchfile(const char *filename, int fd, const unsigned char *value, const 
 		if (r < 1)
 		{
 			if (r < 0) perror("read");
-			return;
+			return -1;
 		}
 		primed += r;
 	}
@@ -164,7 +168,8 @@ void searchfile(const char *filename, int fd, const unsigned char *value, const 
 		if (r != 1)
 		{
 			if (r < 0) perror("read");
-			return;
+			result = -1;
+			break;
 		}
 
 		int i;
@@ -176,9 +181,15 @@ void searchfile(const char *filename, int fd, const unsigned char *value, const 
 
 		if (i == len)
 		{
-			printf("%s: %08jx\n", filename, file_offset);
-			if (bytes_before || bytes_after)
-				dump_context(fd, file_offset);
+			++count;
+			if (!print_count)
+			{
+				printf("%s: %08jx\n", filename, file_offset);
+				if (bytes_before || bytes_after)
+					dump_context(fd, file_offset);
+			}
+			if (first_only)
+				break;
 		}
 
 		++readp;
@@ -191,15 +202,22 @@ void searchfile(const char *filename, int fd, const unsigned char *value, const 
 			readp = buf;
 		}
 	}
+
+	if (print_count)
+	{
+		printf("%s count: %d\n", filename, count);
+	}
+	return result;
 }
 
-void recurse(const char *path, const unsigned char *value, const unsigned char *mask, int len)
+int recurse(const char *path, const unsigned char *value, const unsigned char *mask, int len)
 {
+	int result = 0;
 	struct stat s;
 	if (stat(path, &s))
 	{
 		perror("stat");
-		return;
+		return result;
 	}
 	if (!S_ISDIR(s.st_mode))
 	{
@@ -208,10 +226,10 @@ void recurse(const char *path, const unsigned char *value, const unsigned char *
 			perror(path);
 		else
 		{
-			searchfile(path, fd, value, mask, len);
+			result = searchfile(path, fd, value, mask, len);
 			close(fd);
 		}
-		return;
+		return result;
 	}
 
 	DIR *dir = opendir(path);
@@ -230,10 +248,13 @@ void recurse(const char *path, const unsigned char *value, const unsigned char *
 		strcpy(newpath, path);
 		strcat(newpath, "/");
 		strcat(newpath, d->d_name);
-		recurse(newpath, value, mask, len);
+		result += recurse(newpath, value, mask, len);
+		if (result && first_only)
+			break;
 	}
 
 	closedir(dir);
+	return result;
 }
 
 void die(const char* msg, ...)
@@ -250,14 +271,16 @@ void usage(char** argv, int full)
 {
 	fprintf(stderr, "bgrep version: %s\n", BGREP_VERSION);
 	fprintf(stderr,
-		"usage: %s [-h] [-B bytes] [-A bytes] [-C bytes] <hex> [<path> [...]]\n\n", *argv);
+		"usage: %s [-hfc] [-B bytes] [-A bytes] [-C bytes] <hex> [<path> [...]]\n\n", *argv);
 	if (full)
 	{
 		fprintf(stderr,
-			"   [-h]         print this help\n"
-			"   [-B bytes]   print <bytes> bytes of context before the match\n"
-			"   [-A bytes]   print <bytes> bytes of context after the match\n"
-			"   [-C bytes]   print <bytes> bytes of context before AND after the match\n\n"
+			"   -h         print this help\n"
+			"   -f         stop scanning after the first match\n"
+			"   -c         print a match count for each file (disables offset/context printing)\n"
+			"   -B bytes   print <bytes> bytes of context before the match\n"
+			"   -A bytes   print <bytes> bytes of context after the match\n"
+			"   -C bytes   print <bytes> bytes of context before AND after the match\n\n"
 			"      Hex examples:\n"
 			"         ffeedd??cc        Matches bytes 0xff, 0xee, 0xff, <any>, 0xcc\n"
 			"         \"foo\"           Matches bytes 0x66, 0x6f, 0x6f\n"
@@ -271,7 +294,7 @@ void parse_opts(int argc, char** argv)
 {
 	int c;
 
-	while ((c = getopt(argc, argv, "A:B:C:h")) != -1)
+	while ((c = getopt(argc, argv, "A:B:C:chf")) != -1)
 	{
 		switch (c)
 		{
@@ -283,6 +306,12 @@ void parse_opts(int argc, char** argv)
 				break;
 			case 'C':
 				bytes_before = bytes_after = atoi(optarg);
+				break;
+			case 'c':
+				print_count = 1;
+				break;
+			case 'f':
+				first_only = 1;
 				break;
 			case 'h':
 				usage(argv, 1);
@@ -303,13 +332,14 @@ int main(int argc, char **argv)
 	unsigned char value[MAX_PATTERN], mask[MAX_PATTERN];
 	int len = 0;
 
-	if (argc < 2)
+	parse_opts(argc, argv);
+
+	if ((argc-optind) < 1)
 	{
 		usage(argv, 0);
 		return 1;
 	}
 
-	parse_opts(argc, argv);
 	argv += optind - 1; /* advance the pointer to the first non-opt arg */
 	argc -= optind - 1;
 
@@ -387,13 +417,17 @@ int main(int argc, char **argv)
 		return 2;
 	}
 
+	int result = 0;
 	if (argc < 3)
-		searchfile("stdin", 0, value, mask, len);
+		result = searchfile("stdin", 0, value, mask, len);
 	else
 	{
 		int c = 2;
-		while (c < argc)
-			recurse(argv[c++], value, mask, len);
+		while (c < argc) {
+			result += recurse(argv[c++], value, mask, len);
+			if (result && first_only)
+				break;
+		}
 	}
-	return 0;
+	return result == 0 ? 3 : 0;
 }
