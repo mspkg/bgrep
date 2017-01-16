@@ -136,42 +136,60 @@ void dump_context(int fd, unsigned long long pos)
 
 void searchfile(const char *filename, int fd, const unsigned char *value, const unsigned char *mask, int len)
 {
-	off_t offset = 0;
 	unsigned char buf[BUFFER_SIZE];
+	const int lenm1 = len-1;
+	const unsigned char *endp = buf+BUFFER_SIZE;
+	unsigned char *readp = buf;
+	off_t file_offset = 0;
 
-	len--;
+	int r;
 
+	/* Prime the buffer with len-1 bytes */
+	int primed = 0;
+	while (primed < lenm1)
+	{
+		r = read(fd, readp+primed, (lenm1-primed));
+		if (r < 1)
+		{
+			if (r < 0) perror("read");
+			return;
+		}
+		primed += r;
+	}
+
+	/* Read a byte at a time, matching as we go. */
 	while (1)
 	{
-		int r;
-
-		memmove(buf, buf + sizeof(buf) - len, len);
-		r = read(fd, buf + len, sizeof(buf) - len);
-
-		if (r < 0)
+		r = read(fd, readp+lenm1, 1);
+		if (r != 1)
 		{
-			perror("read");
+			if (r < 0) perror("read");
 			return;
-		} else if (!r)
-			return;
-
-		int o, i;
-		for (o = offset ? 0 : len; o < r; ++o)
-		{
-			for (i = 0; i <= len; ++i)
-				if ((buf[o + i] & mask[i]) != value[i])
-					break;
-			if (i > len)
-			{
-				unsigned long long pos = (unsigned long long)(offset + o - len);
-				printf("%s: %08llx\n", filename, pos);
-				if (bytes_before || bytes_after)
-					dump_context(fd, pos);
-			}
 		}
 
-		offset += r;
+		int i;
+		for (i = 0; i < len; ++i)
+		{
+			if ((readp[i] & mask[i]) != value[i])
+				break;
+		}
 
+		if (i == len)
+		{
+			printf("%s: %08jx\n", filename, file_offset);
+			if (bytes_before || bytes_after)
+				dump_context(fd, file_offset);
+		}
+
+		++readp;
+		++file_offset;
+
+		/* Shift the buffer every time we run out of space */
+		if ((readp+lenm1) >= endp)
+		{
+			memmove(buf, readp, lenm1);
+			readp = buf;
+		}
 	}
 }
 
@@ -228,10 +246,24 @@ void die(const char* msg, ...)
 	exit(1);
 }
 
-void usage(char** argv)
+void usage(char** argv, int full)
 {
 	fprintf(stderr, "bgrep version: %s\n", BGREP_VERSION);
-	fprintf(stderr, "usage: %s [-B bytes] [-A bytes] [-C bytes] <hex> [<path> [...]]\n", *argv);
+	fprintf(stderr,
+		"usage: %s [-h] [-B bytes] [-A bytes] [-C bytes] <hex> [<path> [...]]\n\n", *argv);
+	if (full)
+	{
+		fprintf(stderr,
+			"   [-h]         print this help\n"
+			"   [-B bytes]   print <bytes> bytes of context before the match\n"
+			"   [-A bytes]   print <bytes> bytes of context after the match\n"
+			"   [-C bytes]   print <bytes> bytes of context before AND after the match\n\n"
+			"      Hex examples:\n"
+			"         ffeedd??cc        Matches bytes 0xff, 0xee, 0xff, <any>, 0xcc\n"
+			"         \"foo\"           Matches bytes 0x66, 0x6f, 0x6f\n"
+			"         \"foo\"00\"bar\"   Matches \"foo\", a null character, then \"bar\"\n"
+			"         \"foo\"??\"bar\"   Matches \"foo\", then any byte, then \"bar\"\n");
+	}
 	exit(1);
 }
 
@@ -239,7 +271,7 @@ void parse_opts(int argc, char** argv)
 {
 	int c;
 
-	while ((c = getopt(argc, argv, "A:B:C:")) != -1)
+	while ((c = getopt(argc, argv, "A:B:C:h")) != -1)
 	{
 		switch (c)
 		{
@@ -252,8 +284,11 @@ void parse_opts(int argc, char** argv)
 			case 'C':
 				bytes_before = bytes_after = atoi(optarg);
 				break;
+			case 'h':
+				usage(argv, 1);
+				break;
 			default:
-				usage(argv);
+				usage(argv, 0);
 		}
 	}
 
@@ -270,7 +305,7 @@ int main(int argc, char **argv)
 
 	if (argc < 2)
 	{
-		usage(argv);
+		usage(argv, 0);
 		return 1;
 	}
 
