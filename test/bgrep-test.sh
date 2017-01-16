@@ -41,6 +41,10 @@ echo "../bgrep 424242 /tmp/bgrepTest* | sed 's/^.*: //g' > /tmp/results.txt"
 
 ../bgrep 424242 /tmp/bgrepTest* | sed 's/^.*: //g' > /tmp/results.txt
 
-echo -e "\nDifferences between /tmp/results.txt and /tmp/bgrepExpectedResult.txt:"
-
-diff -u /tmp/results.txt /tmp/bgrepExpectedResult.txt
+if diff -q /tmp/results.txt /tmp/bgrepExpectedResult.txt ; then
+	echo -e "\nAll tests passed."
+else
+	echo -e "\nFAILURE\nDifferences between /tmp/results.txt and /tmp/bgrepExpectedResult.txt:"
+	diff -u /tmp/results.txt /tmp/bgrepExpectedResult.txt
+	exit 1
+fi
