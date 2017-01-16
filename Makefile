@@ -6,4 +6,7 @@ all: bgrep
 clean:
 	$(RM) bgrep test/data
 
-.PHONY: clean
+test: bgrep
+	( cd test && ./bgrep-test.sh )
+
+.PHONY: clean test
