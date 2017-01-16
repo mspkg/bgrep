@@ -37,7 +37,7 @@
 #include <ctype.h>
 #include <stdarg.h>
 
-#define BGREP_VERSION "0.2"
+#define BGREP_VERSION "0.2.1"
 
 // The Windows/DOS implementation of read(3) opens files in text mode by default,
 // which means that an 0x1A byte is considered the end of the file unless a non-standard
@@ -45,6 +45,9 @@
 #ifndef O_BINARY
 #define O_BINARY 0
 #endif
+
+const unsigned int MAX_PATTERN=256; /* 0x100 */
+const unsigned int BUFFER_SIZE=1024; /* 0x400 */
 
 int bytes_before = 0, bytes_after = 0;
 
@@ -90,7 +93,7 @@ void dump_context(int fd, unsigned long long pos)
 		return; /* this one is not fatal*/
 	}
 
-	char buf[1024];
+	char buf[BUFFER_SIZE];
 	off_t start = pos - bytes_before;
 	int bytes_to_read = bytes_before + bytes_after;
 
@@ -134,7 +137,7 @@ void dump_context(int fd, unsigned long long pos)
 void searchfile(const char *filename, int fd, const unsigned char *value, const unsigned char *mask, int len)
 {
 	off_t offset = 0;
-	unsigned char buf[1024];
+	unsigned char buf[BUFFER_SIZE];
 
 	len--;
 
@@ -262,7 +265,7 @@ void parse_opts(int argc, char** argv)
 
 int main(int argc, char **argv)
 {
-	unsigned char value[0x100], mask[0x100];
+	unsigned char value[MAX_PATTERN], mask[MAX_PATTERN];
 	int len = 0;
 
 	if (argc < 2)
@@ -278,7 +281,7 @@ int main(int argc, char **argv)
 	char *h = argv[1];
 	enum {MODE_HEX,MODE_TXT,MODE_TXT_ESC} parse_mode = MODE_HEX;
 
-	while (*h && (parse_mode != MODE_HEX || h[1]) && len < 0x100)
+	while (*h && (parse_mode != MODE_HEX || h[1]) && len < MAX_PATTERN)
 	{
 		int on_quote = (h[0] == '"');
 		int on_esc = (h[0] == '\\');
