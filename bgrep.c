@@ -82,7 +82,7 @@ int ascii2hex(char c)
  */
 void dump_context(int fd, unsigned long long pos)
 {
-	off_t save_pos = lseek(fd, 0, SEEK_CUR);
+	off_t save_pos = lseek(fd, (off_t)0, SEEK_CUR);
 
 	if (save_pos == (off_t)-1)
 	{
