@@ -60,8 +60,8 @@
 #define O_BINARY 0
 #endif
 
-const unsigned int MAX_PATTERN=512; /* 0x200 */
-const unsigned int BUFFER_SIZE=1024; /* 0x400 */
+const unsigned int MAX_PATTERN=1024; /* 0x400 */
+const unsigned int BUFFER_SIZE=2048; /* 0x800 */
 
 uintmax_t bytes_before = 0, bytes_after = 0, skip_to = 0;
 int first_only = 0;
