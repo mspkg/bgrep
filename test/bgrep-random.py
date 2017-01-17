@@ -1,6 +1,6 @@
 import os, subprocess, random
 
-BGREP="../bgrep"
+BGREP="../src/bgrep"
 
 def generate_random(datalen, searchlen):
 	data = os.urandom(datalen)

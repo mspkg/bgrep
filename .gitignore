@@ -1,2 +1,38 @@
-bgrep
+# The program binary
+**/bgrep
+
+# test artifact
 test/data
+
+# artifacts of autotools
+autom4te.cache
+config.log
+config.status
+Makefile
+src/Makefile
+lib/Makefile
+test/Makefile
+config.h
+stamp-h1
+**/.deps
+**/*.o
+**/*.log
+**/*.trs
+
+# The following are built by gnulib
+lib/arg-nonnull.h
+lib/c++defs.h
+lib/charset.alias
+lib/configmake.h
+lib/inttypes.h
+lib/libgnu.a
+lib/ref-add.sed
+lib/ref-del.sed
+lib/stdio.h
+lib/stdlib.h
+lib/string.h
+lib/sys/
+lib/unistd.h
+lib/warn-on-use.h
+lib/wchar.h
+lib/wctype.h

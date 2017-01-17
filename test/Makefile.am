@@ -1,0 +1,1 @@
+TESTS = bgrep-test.sh

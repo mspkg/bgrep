@@ -25,6 +25,8 @@
 // or implied, of the copyright holder.
 //
 
+#include "config.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -36,8 +38,20 @@
 #include <getopt.h>
 #include <ctype.h>
 #include <stdarg.h>
+#include <errno.h>
 
-#define BGREP_VERSION "0.2.1"
+#include "quote.h"
+#include "xstrtol.h"
+
+#define BGREP_VERSION "0.3"
+
+#ifndef STRPREFIX
+#  define STRPREFIX(a, b) (strncmp (a, b, strlen (b)) == 0)
+#endif /* STRPREFIX */
+
+#ifndef MIN
+#  define MIN(X,Y) (((X) < (Y)) ? (X) : (Y))
+#endif /* MIN */
 
 // The Windows/DOS implementation of read(3) opens files in text mode by default,
 // which means that an 0x1A byte is considered the end of the file unless a non-standard
@@ -49,11 +63,64 @@
 const unsigned int MAX_PATTERN=256; /* 0x100 */
 const unsigned int BUFFER_SIZE=1024; /* 0x400 */
 
-int bytes_before = 0, bytes_after = 0;
+uintmax_t bytes_before = 0, bytes_after = 0, skip_to = 0;
 int first_only = 0;
 int print_count = 0;
 
-void die(const char* msg, ...);
+
+/*
+ * Gratefully derived from "dd" (http://git.savannah.gnu.org/gitweb/?p=coreutils.git)
+ * 
+ * The following function is licensed as follows:
+ *    Copyright (C) 1985-2017 Free Software Foundation, Inc.
+ *    This program is free software: you can redistribute it and/or modify
+ *    it under the terms of the GNU General Public License as published by
+ *    the Free Software Foundation, either version 3 of the License, or
+ *    (at your option) any later version.
+ * 
+ *    A copy of the GNU General Public License is available at
+ *    <http://www.gnu.org/licenses/>.
+ *
+ * Return the value of STR, interpreted as a non-negative decimal integer,
+ * optionally multiplied by various values.
+ * Set *INVALID to a nonzero error value if STR does not represent a
+ * number in this format.
+ */
+static uintmax_t
+parse_integer (const char *str, strtol_error *invalid)
+{
+	uintmax_t n;
+	char *suffix;
+	strtol_error e = xstrtoumax (str, &suffix, 10, &n, "bcEGkKMPTwYZ0");
+
+	if (e == LONGINT_INVALID_SUFFIX_CHAR && *suffix == 'x')
+	{
+		uintmax_t multiplier = parse_integer (suffix + 1, invalid);
+
+		if (multiplier != 0 && n * multiplier / multiplier != n)
+		{
+			*invalid = LONGINT_OVERFLOW;
+			return 0;
+		}
+
+		if (n == 0 && STRPREFIX (str, "0x"))
+			error (0, 0,
+				"warning: %s is a zero multiplier; "
+				"use %s if that is intended",
+				quote_n (0, "0x"), quote_n (1, "00x"));
+
+		n *= multiplier;
+	}
+	else if (e != LONGINT_OK)
+	{
+		*invalid = e;
+		return 0;
+	}
+
+	return n;
+}
+
+void die(int status, const char* msg, ...);
 
 void print_char(unsigned char c)
 {
@@ -81,6 +148,33 @@ int ascii2hex(char c)
 		return -1;
 }
 
+off_t skip(int fd, off_t current, off_t n) {
+	off_t result = lseek(fd, n, SEEK_CUR);
+	if (result == (off_t)-1) {
+		if (n < 0)
+		{
+			perror("file does not support backward lseek");
+			return -1;
+		}
+		/* Skip forward the hard way. */
+		unsigned char buf[BUFFER_SIZE];
+		result = current;
+		while (n > 0) {
+			int r = read(fd, buf, MIN(n, BUFFER_SIZE));
+			if (r < 1)
+			{
+				if (r != 0) perror("read");
+				return result;
+			}
+			n -= r;
+			result += r;
+		}
+
+	}
+
+	return result;
+}
+
 /* TODO: this will not work with STDIN or pipes
  * 	 we have to maintain a window of the bytes before which I am too lazy to do
  * 	 right now.
@@ -91,7 +185,7 @@ void dump_context(int fd, unsigned long long pos)
 
 	if (save_pos == (off_t)-1)
 	{
-		perror("lseek");
+		perror("unable to lseek. cannot show context: ");
 		return; /* this one is not fatal*/
 	}
 
@@ -101,7 +195,7 @@ void dump_context(int fd, unsigned long long pos)
 
 	if (lseek(fd, start, SEEK_SET) == (off_t)-1)
 	{
-		perror("lseek");
+		perror("unable to lseek backward: ");
 		return;
 	}
 
@@ -112,8 +206,7 @@ void dump_context(int fd, unsigned long long pos)
 
 		if (bytes_to_read < 0)
 		{
-			perror("read");
-			die("Error reading context");
+			die(errno, "Error reading context: read: %s", strerror(errno));
 		}
 
 		char* buf_end = buf + bytes_read;
@@ -131,8 +224,7 @@ void dump_context(int fd, unsigned long long pos)
 
 	if (lseek(fd, save_pos, SEEK_SET) == (off_t)-1)
 	{
-		perror("lseek");
-		die("Could not restore the original file offset while printing context");
+		die(errno, "Could not restore the original file offset while printing context: lseek: %s", strerror(errno));
 	}
 }
 
@@ -145,6 +237,15 @@ int searchfile(const char *filename, int fd, const unsigned char *value, const u
 	const unsigned char *endp = buf+BUFFER_SIZE;
 	unsigned char *readp = buf;
 	off_t file_offset = 0;
+
+	if (skip_to > 0)
+	{
+		file_offset = skip(fd, file_offset, skip_to);
+		if (file_offset != skip_to)
+		{
+			die(1, "Failed to skip ahead to offset 0x%jx\n", file_offset);
+		}
+	}
 
 	int r;
 
@@ -235,8 +336,7 @@ int recurse(const char *path, const unsigned char *value, const unsigned char *m
 	DIR *dir = opendir(path);
 	if (!dir)
 	{
-		perror(path);
-		exit(3);
+		die(3, "invalid path: %s: %s", path, strerror(errno));
 	}
 
 	struct dirent *d;
@@ -257,35 +357,40 @@ int recurse(const char *path, const unsigned char *value, const unsigned char *m
 	return result;
 }
 
-void die(const char* msg, ...)
+void die(int status, const char* msg, ...)
 {
 	va_list ap;
 	va_start(ap, msg);
 	vfprintf(stderr, msg, ap);
 	fprintf(stderr, "\n");
 	va_end(ap);
-	exit(1);
+	exit(status);
 }
 
 void usage(char** argv, int full)
 {
 	fprintf(stderr, "bgrep version: %s\n", BGREP_VERSION);
 	fprintf(stderr,
-		"usage: %s [-hfc] [-B bytes] [-A bytes] [-C bytes] <hex> [<path> [...]]\n\n", *argv);
+		"usage: %s [-hfc] [-s BYTES] [-B BYTES] [-A BYTES] [-C BYTES] <hex> [<path> [...]]\n\n", *argv);
 	if (full)
 	{
 		fprintf(stderr,
 			"   -h         print this help\n"
 			"   -f         stop scanning after the first match\n"
 			"   -c         print a match count for each file (disables offset/context printing)\n"
-			"   -B bytes   print <bytes> bytes of context before the match\n"
-			"   -A bytes   print <bytes> bytes of context after the match\n"
-			"   -C bytes   print <bytes> bytes of context before AND after the match\n\n"
+			"   -s BYTES   skip forward to offset before searching\n"
+			"   -B BYTES   print <bytes> bytes of context before the match\n"
+			"   -A BYTES   print <bytes> bytes of context after the match\n"
+			"   -C BYTES   print <bytes> bytes of context before AND after the match\n\n"
 			"      Hex examples:\n"
 			"         ffeedd??cc        Matches bytes 0xff, 0xee, 0xff, <any>, 0xcc\n"
 			"         \"foo\"           Matches bytes 0x66, 0x6f, 0x6f\n"
 			"         \"foo\"00\"bar\"   Matches \"foo\", a null character, then \"bar\"\n"
-			"         \"foo\"??\"bar\"   Matches \"foo\", then any byte, then \"bar\"\n");
+			"         \"foo\"??\"bar\"   Matches \"foo\", then any byte, then \"bar\"\n\n"
+			"      BYTES may be followed by the following multiplicative suffixes:\n"
+			"         c =1, w =2, b =512, kB =1000, K =1024, MB =1000*1000, M =1024*1024, xM =M\n" 
+			"         GB =1000*1000*1000, G =1024*1024*1024, and so on for T, P, E, Z, Y.\n"
+		);
 	}
 	exit(1);
 }
@@ -293,19 +398,20 @@ void usage(char** argv, int full)
 void parse_opts(int argc, char** argv)
 {
 	int c;
+	strtol_error invalid = LONGINT_OK;
 
-	while ((c = getopt(argc, argv, "A:B:C:chf")) != -1)
+	while ((c = getopt(argc, argv, "A:B:C:s:chf")) != -1)
 	{
 		switch (c)
 		{
 			case 'A':
-				bytes_after = atoi(optarg);
+				bytes_after = parse_integer(optarg, &invalid);
 				break;
 			case 'B':
-				bytes_before = atoi(optarg);
+				bytes_before = parse_integer(optarg, &invalid);
 				break;
 			case 'C':
-				bytes_before = bytes_after = atoi(optarg);
+				bytes_before = bytes_after = parse_integer(optarg, &invalid);
 				break;
 			case 'c':
 				print_count = 1;
@@ -313,18 +419,24 @@ void parse_opts(int argc, char** argv)
 			case 'f':
 				first_only = 1;
 				break;
+			case 's':
+				skip_to = parse_integer(optarg, &invalid);
+				break;
 			case 'h':
 				usage(argv, 1);
 				break;
 			default:
 				usage(argv, 0);
 		}
-	}
 
-	if (bytes_before < 0)
-		die("Invalid value %d for bytes before", bytes_before);
-	if (bytes_after < 0)
-		die("Invalid value %d for bytes after", bytes_after);
+		if (invalid != LONGINT_OK) {
+			char flag[] = "- ";
+			flag[1] = c;
+
+			die(invalid == LONGINT_OVERFLOW ? EOVERFLOW : 1,
+				"Invalid number for option %s: %s", quote_n(0,flag), quote_n(1, optarg));
+		}
+	}
 }
 
 int main(int argc, char **argv)
