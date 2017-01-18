@@ -28,15 +28,17 @@ sudo make install
 ```
 $ src/bgrep -h
 bgrep version: 0.3
-usage: src/bgrep [-hfc] [-s BYTES] [-B BYTES] [-A BYTES] [-C BYTES] <hex> [<path> [...]]
+usage: src/bgrep [-hFHbclr] [-s BYTES] <hex> [<path> [...]]
 
-   -h         print this help
-   -f         stop scanning after the first match
-   -c         print a match count for each file (disables offset/context printing)
-   -s BYTES   skip forward to offset before searching
-   -B BYTES   print <bytes> bytes of context before the match
-   -A BYTES   print <bytes> bytes of context after the match
-   -C BYTES   print <bytes> bytes of context before AND after the match
+   -h         Print this help
+   -F         Stop scanning after the first match
+   -H         Print the file name for each match
+   -b         Print the byte offset of each match INSTEAD of xxd-style output
+   -c         Print a match count for each file (disables offset/context printing)
+   -l         Suppress normal output; instead print the name of each input file from
+              which output would normally have been printed. Implies -F
+   -r         Recurse into directories
+   -s BYTES   Skip forward by BYTES before searching
 
       Hex examples:
          ffeedd??cc        Matches bytes 0xff, 0xee, 0xff, <any>, 0xcc
@@ -47,36 +49,58 @@ usage: src/bgrep [-hfc] [-s BYTES] [-B BYTES] [-A BYTES] [-C BYTES] <hex> [<path
       BYTES may be followed by the following multiplicative suffixes:
          c =1, w =2, b =512, kB =1000, K =1024, MB =1000*1000, M =1024*1024, xM =M
          GB =1000*1000*1000, G =1024*1024*1024, and so on for T, P, E, Z, Y.
+
 ```
 
 ### Examples
-**Basic usage**
+**Basic (xxd-style) usage**
 ```
 $ echo "1234foo89abfoof0123" | bgrep \"foo\"
-stdin: 00000004
-stdin: 0000000b
+0000004: 666f 6f
+000000b: 666f 6f
 ```
-**Count findings option**
+**Use `xxd -r` to convert back to bytes**
+```
+$ echo "1234foo89abfoof0123" | bgrep \"foo\" | xxd -r ; echo
+foofoo
+```
+**Just the byte offset of each match**
+```
+$ echo "1234foo89abfoof0123" | bgrep -b \"foo\"
+00000004
+0000000b
+```
+**Count the matches**
 ```
 $ echo "1234foo89abfoof0123" | bgrep -c \"foo\"
-stdin count: 2
+2
 ```
 **Find-first option**
 ```
-$ echo "1234foo89abfoof0123" | bgrep -f \"foo\"
-stdin: 00000004
+$ echo "1234foo89abfoof0123" | bgrep -Fb \"foo\"
+00000004
 ```
 **Overlapping matches**
 ```
 $ echo "oofoofoofoo" | bgrep \"foof\"
-stdin: 00000002
-stdin: 00000005
+0000002: 666f 6f66 6f6f 66
+```
+**This time with filenames and byte offsets**
+```
+$ echo "oofoofoofoo" | bgrep -Hb \"foof\"
+stdin:00000002
+stdin:00000005
 ```
 **Wildcard matches**
 ```
+$ echo "oof11f22foo" | bgrep -Hb '66????66'
+stdin:00000002
+stdin:00000005
+```
+**Get the wildcard bytes with xxd-style output**
+```
 $ echo "oof11f22foo" | bgrep '66????66'
-stdin: 00000002
-stdin: 00000005
+0000002: 6631 3166 3232 66
 ```
 
 ### Extreme example
