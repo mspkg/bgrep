@@ -42,85 +42,14 @@
 
 #include "quote.h"
 #include "xstrtol.h"
-
-#define BGREP_VERSION "0.3"
-
-#ifndef STRPREFIX
-#  define STRPREFIX(a, b) (strncmp (a, b, strlen (b)) == 0)
-#endif /* STRPREFIX */
-
-#ifndef MIN
-#  define MIN(X,Y) (((X) < (Y)) ? (X) : (Y))
-#endif /* MIN */
-
-// The Windows/DOS implementation of read(3) opens files in text mode by default,
-// which means that an 0x1A byte is considered the end of the file unless a non-standard
-// flag is used. Make sure it's defined even on real POSIX environments
-#ifndef O_BINARY
-#define O_BINARY 0
-#endif
+#include "bgrep.h"
 
 const unsigned int MAX_PATTERN=1024; /* 0x400 */
 const unsigned int BUFFER_SIZE=2048; /* 0x800 */
 
-uintmax_t bytes_before = 0, bytes_after = 0, skip_to = 0;
-int first_only = 0;
-int print_count = 0;
+/* Config parameters */
+static struct bgrep_config params = { 0 };
 
-
-/*
- * Gratefully derived from "dd" (http://git.savannah.gnu.org/gitweb/?p=coreutils.git)
- * 
- * The following function is licensed as follows:
- *    Copyright (C) 1985-2017 Free Software Foundation, Inc.
- *    This program is free software: you can redistribute it and/or modify
- *    it under the terms of the GNU General Public License as published by
- *    the Free Software Foundation, either version 3 of the License, or
- *    (at your option) any later version.
- * 
- *    A copy of the GNU General Public License is available at
- *    <http://www.gnu.org/licenses/>.
- *
- * Return the value of STR, interpreted as a non-negative decimal integer,
- * optionally multiplied by various values.
- * Set *INVALID to a nonzero error value if STR does not represent a
- * number in this format.
- */
-static uintmax_t
-parse_integer (const char *str, strtol_error *invalid)
-{
-	uintmax_t n;
-	char *suffix;
-	strtol_error e = xstrtoumax (str, &suffix, 10, &n, "bcEGkKMPTwYZ0");
-
-	if (e == LONGINT_INVALID_SUFFIX_CHAR && *suffix == 'x')
-	{
-		uintmax_t multiplier = parse_integer (suffix + 1, invalid);
-
-		if (multiplier != 0 && n * multiplier / multiplier != n)
-		{
-			*invalid = LONGINT_OVERFLOW;
-			return 0;
-		}
-
-		if (n == 0 && STRPREFIX (str, "0x"))
-			error (0, 0,
-				"warning: %s is a zero multiplier; "
-				"use %s if that is intended",
-				quote_n (0, "0x"), quote_n (1, "00x"));
-
-		n *= multiplier;
-	}
-	else if (e != LONGINT_OK)
-	{
-		*invalid = e;
-		return 0;
-	}
-
-	return n;
-}
-
-void die(int status, const char* msg, ...);
 
 void print_char(unsigned char c)
 {
@@ -190,8 +119,8 @@ void dump_context(int fd, unsigned long long pos)
 	}
 
 	char buf[BUFFER_SIZE];
-	off_t start = pos - bytes_before;
-	int bytes_to_read = bytes_before + bytes_after;
+	off_t start = pos - params.bytes_before;
+	int bytes_to_read = params.bytes_before + params.bytes_after;
 
 	if (lseek(fd, start, SEEK_SET) == (off_t)-1)
 	{
@@ -238,10 +167,10 @@ int searchfile(const char *filename, int fd, const unsigned char *value, const u
 	unsigned char *readp = buf;
 	off_t file_offset = 0;
 
-	if (skip_to > 0)
+	if (params.skip_to > 0)
 	{
-		file_offset = skip(fd, file_offset, skip_to);
-		if (file_offset != skip_to)
+		file_offset = skip(fd, file_offset, params.skip_to);
+		if (file_offset != params.skip_to)
 		{
 			die(1, "Failed to skip ahead to offset 0x%jx\n", file_offset);
 		}
@@ -283,13 +212,13 @@ int searchfile(const char *filename, int fd, const unsigned char *value, const u
 		if (i == len)
 		{
 			++count;
-			if (!print_count)
+			if (!params.print_count)
 			{
 				printf("%s: %08jx\n", filename, file_offset);
-				if (bytes_before || bytes_after)
+				if (params.bytes_before || params.bytes_after)
 					dump_context(fd, file_offset);
 			}
-			if (first_only)
+			if (params.first_only)
 				break;
 		}
 
@@ -304,7 +233,7 @@ int searchfile(const char *filename, int fd, const unsigned char *value, const u
 		}
 	}
 
-	if (print_count)
+	if (params.print_count)
 	{
 		printf("%s count: %d\n", filename, count);
 	}
@@ -349,7 +278,7 @@ int recurse(const char *path, const unsigned char *value, const unsigned char *m
 		strcat(newpath, "/");
 		strcat(newpath, d->d_name);
 		result += recurse(newpath, value, mask, len);
-		if (result && first_only)
+		if (result && params.first_only)
 			break;
 	}
 
@@ -405,22 +334,22 @@ void parse_opts(int argc, char** argv)
 		switch (c)
 		{
 			case 'A':
-				bytes_after = parse_integer(optarg, &invalid);
+				params.bytes_after = parse_integer(optarg, &invalid);
 				break;
 			case 'B':
-				bytes_before = parse_integer(optarg, &invalid);
+				params.bytes_before = parse_integer(optarg, &invalid);
 				break;
 			case 'C':
-				bytes_before = bytes_after = parse_integer(optarg, &invalid);
+				params.bytes_before = params.bytes_after = parse_integer(optarg, &invalid);
 				break;
 			case 'c':
-				print_count = 1;
+				params.print_count = 1;
 				break;
 			case 'f':
-				first_only = 1;
+				params.first_only = 1;
 				break;
 			case 's':
-				skip_to = parse_integer(optarg, &invalid);
+				params.skip_to = parse_integer(optarg, &invalid);
 				break;
 			case 'h':
 				usage(argv, 1);
@@ -537,7 +466,7 @@ int main(int argc, char **argv)
 		int c = 2;
 		while (c < argc) {
 			result += recurse(argv[c++], value, mask, len);
-			if (result && first_only)
+			if (result && params.first_only)
 				break;
 		}
 	}
