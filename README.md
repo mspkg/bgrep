@@ -102,7 +102,16 @@ stdin:00000005
 $ echo "oof11f22foo" | bgrep '66????66'
 0000002: 6631 3166 3232 66
 ```
-
+**Skip forward in the file**
+```
+$ echo "oof11f22foo" | bgrep  -s 3 '66????66'
+0000005: 6632 3266
+```
+**Use `dd`-style block types**
+```
+$ (dd if=/dev/urandom bs=1 count=2k ; echo foo ; dd if=/dev/urandom bs=1 count=1k) 2>/dev/null | bgrep -s 1k \"foo\"
+0000800: 666f 6f
+```
 ### Extreme example
 
 Suppose you have a corrupt bzip2-compressed TAR file called `backups.tar.bz2`.  You want to locate TAR headers within this file.  You do know that all the paths start with "home", since it was your /home volume you had backed up.
