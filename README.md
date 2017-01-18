@@ -7,9 +7,10 @@ strings. I'm even more annoyed by the fact that a simple search for
 Feel free to modify, branch, fork, improve. Re-licenses as BSD.
 
 ### Building
-First, you need to install `gnulib`.  On Debian and derivatives:
+First, you need to have [make](https://www.gnu.org/software/make/manual/make.html), [gcc](https://gcc.gnu.org/), [automake](https://www.gnu.org/software/automake/), and [gnulib](https://www.gnu.org/software/gnulib/) instaled.
+On Debian and derivatives:
 ```
-sudo apt-get install gnulib
+sudo apt-get install build-essential gnulib
 ```
 
 Once you have that, it is the normal autotools build process.
