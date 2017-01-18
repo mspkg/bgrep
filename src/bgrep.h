@@ -48,9 +48,12 @@ struct bgrep_config {
 	int print_offsets;
 	int print_filenames;
 	int print_filenames_only;
+	int recurse;
 };
 
 extern struct bgrep_config params;
+extern const char *progname;
+extern const unsigned int BUFFER_SIZE;
 
 /* bgrep.c */
 void die(int status, const char *msg, ...);
@@ -61,6 +64,8 @@ void begin_match(const char *fname);
 void print_match(const char *match, int len, off_t file_offset);
 void print_xxd(const char *match, int len, off_t file_offset);
 void flush_match();
+
+void dump_context(int fd, unsigned long long pos);
 
 #endif /* BGREP_H */
 

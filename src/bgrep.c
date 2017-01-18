@@ -49,15 +49,8 @@ const unsigned int BUFFER_SIZE=2048; /* 0x800 */
 
 /* Config parameters */
 struct bgrep_config params = { 0 };
+const char *progname;
 
-
-void print_char(unsigned char c)
-{
-	if (isprint(c))
-		putchar(c);
-	else
-		printf("\\x%02x", (int)c);
-}
 
 int ascii2hex(char c)
 {
@@ -104,58 +97,6 @@ off_t skip(int fd, off_t current, off_t n) {
 	return result;
 }
 
-/* TODO: this will not work with STDIN or pipes
- * 	 we have to maintain a window of the bytes before which I am too lazy to do
- * 	 right now.
- */
-void dump_context(int fd, unsigned long long pos)
-{
-	off_t save_pos = lseek(fd, (off_t)0, SEEK_CUR);
-
-	if (save_pos == (off_t)-1)
-	{
-		perror("unable to lseek. cannot show context: ");
-		return; /* this one is not fatal*/
-	}
-
-	char buf[BUFFER_SIZE];
-	off_t start = pos - params.bytes_before;
-	int bytes_to_read = params.bytes_before + params.bytes_after;
-
-	if (lseek(fd, start, SEEK_SET) == (off_t)-1)
-	{
-		perror("unable to lseek backward: ");
-		return;
-	}
-
-	for (;bytes_to_read;)
-	{
-		int read_chunk = bytes_to_read > sizeof(buf) ? sizeof(buf) : bytes_to_read;
-		int bytes_read = read(fd, buf, read_chunk);
-
-		if (bytes_to_read < 0)
-		{
-			die(errno, "Error reading context: read: %s", strerror(errno));
-		}
-
-		char* buf_end = buf + bytes_read;
-		char* p = buf;
-
-		for (; p < buf_end;p++)
-		{
-			print_char(*p);
-		}
-
-		bytes_to_read -= read_chunk;
-	}
-
-	putchar('\n');
-
-	if (lseek(fd, save_pos, SEEK_SET) == (off_t)-1)
-	{
-		die(errno, "Could not restore the original file offset while printing context: lseek: %s", strerror(errno));
-	}
-}
 
 int searchfile(const char *filename, int fd, const unsigned char *value, const unsigned char *mask, int len)
 {
@@ -166,6 +107,8 @@ int searchfile(const char *filename, int fd, const unsigned char *value, const u
 	const unsigned char *endp = buf+BUFFER_SIZE;
 	unsigned char *readp = buf;
 	off_t file_offset = 0;
+
+	begin_match(filename);
 
 	if (params.skip_to > 0)
 	{
@@ -211,13 +154,8 @@ int searchfile(const char *filename, int fd, const unsigned char *value, const u
 
 		if (i == len)
 		{
-			++count;
-			if (!params.print_count)
-			{
-				printf("%s: %08jx\n", filename, file_offset);
-				if (params.bytes_before || params.bytes_after)
-					dump_context(fd, file_offset);
-			}
+			/* TODO support context dumping here! */
+			print_match(readp, len, file_offset);
 			if (params.first_only)
 				break;
 		}
@@ -233,10 +171,7 @@ int searchfile(const char *filename, int fd, const unsigned char *value, const u
 		}
 	}
 
-	if (params.print_count)
-	{
-		printf("%s count: %d\n", filename, count);
-	}
+	flush_match();
 	return result;
 }
 
@@ -262,27 +197,32 @@ int recurse(const char *path, const unsigned char *value, const unsigned char *m
 		return result;
 	}
 
-	DIR *dir = opendir(path);
-	if (!dir)
-	{
-		die(3, "invalid path: %s: %s", path, strerror(errno));
-	}
+	if (params.recurse == 0) {
+		die(3, "%s: Is a directory", path);
 
-	struct dirent *d;
-	while ((d = readdir(dir)))
-	{
-		if (!(strcmp(d->d_name, ".") && strcmp(d->d_name, "..")))
-			continue;
-		char newpath[strlen(path) + strlen(d->d_name) + 1];
-		strcpy(newpath, path);
-		strcat(newpath, "/");
-		strcat(newpath, d->d_name);
-		result += recurse(newpath, value, mask, len);
-		if (result && params.first_only)
-			break;
-	}
+	} else {
+		DIR *dir = opendir(path);
+		if (!dir)
+		{
+			die(3, "invalid path: %s: %s", path, strerror(errno));
+		}
 
-	closedir(dir);
+		struct dirent *d;
+		while ((d = readdir(dir)))
+		{
+			if (!(strcmp(d->d_name, ".") && strcmp(d->d_name, "..")))
+				continue;
+			char newpath[strlen(path) + strlen(d->d_name) + 1];
+			strcpy(newpath, path);
+			strcat(newpath, "/");
+			strcat(newpath, d->d_name);
+			result += recurse(newpath, value, mask, len);
+			if (result && params.first_only)
+				break;
+		}
+
+		closedir(dir);
+	}
 	return result;
 }
 
@@ -290,27 +230,39 @@ void die(int status, const char* msg, ...)
 {
 	va_list ap;
 	va_start(ap, msg);
+
+	fprintf(stderr, "%s:", progname);
 	vfprintf(stderr, msg, ap);
 	fprintf(stderr, "\n");
+
 	va_end(ap);
 	exit(status);
 }
 
-void usage(char** argv, int full)
+/* NOTE: -A, -B, and -C disabled (for now) */
+void usage(int full)
 {
 	fprintf(stderr, "bgrep version: %s\n", BGREP_VERSION);
 	fprintf(stderr,
-		"usage: %s [-hfc] [-s BYTES] [-B BYTES] [-A BYTES] [-C BYTES] <hex> [<path> [...]]\n\n", *argv);
+//		"usage: %s [-hFHbclr] [-s BYTES] [-B BYTES] [-A BYTES] [-C BYTES] <hex> [<path> [...]]\n\n",
+		"usage: %s [-hFHbclr] [-s BYTES] <hex> [<path> [...]]\n\n",
+		 progname);
 	if (full)
 	{
 		fprintf(stderr,
-			"   -h         print this help\n"
-			"   -f         stop scanning after the first match\n"
-			"   -c         print a match count for each file (disables offset/context printing)\n"
-			"   -s BYTES   skip forward to offset before searching\n"
-			"   -B BYTES   print <bytes> bytes of context before the match\n"
-			"   -A BYTES   print <bytes> bytes of context after the match\n"
-			"   -C BYTES   print <bytes> bytes of context before AND after the match\n\n"
+			"   -h         Print this help\n"
+			"   -F         Stop scanning after the first match\n"
+			"   -H         Print the file name for each match\n"
+			"   -b         Print the byte offset of each match INSTEAD of xxd-style output\n"
+			"   -c         Print a match count for each file (disables offset/context printing)\n"
+			"   -l         Suppress normal output; instead print the name of each input file from\n"
+			"              which output would normally have been printed. Implies -F\n"
+			"   -r         Recurse into directories\n"
+			"   -s BYTES   Skip forward by BYTES before searching\n"
+//			"   -B BYTES   Print BYTES of context before the match (xxd output only)\n"
+//			"   -A BYTES   Print BYTES of context after the match (xxd output only)\n"
+//			"   -C BYTES   Print BYTES of context before AND after the match (xxd output only)\n"
+			"\n"
 			"      Hex examples:\n"
 			"         ffeedd??cc        Matches bytes 0xff, 0xee, 0xff, <any>, 0xcc\n"
 			"         \"foo\"           Matches bytes 0x66, 0x6f, 0x6f\n"
@@ -329,10 +281,11 @@ void parse_opts(int argc, char** argv)
 	int c;
 	strtol_error invalid = LONGINT_OK;
 
-	while ((c = getopt(argc, argv, "A:B:C:s:chf")) != -1)
+	while ((c = getopt(argc, argv, "A:B:C:s:hFHbclr")) != -1)
 	{
 		switch (c)
 		{
+/*
 			case 'A':
 				params.bytes_after = parse_integer(optarg, &invalid);
 				break;
@@ -342,20 +295,34 @@ void parse_opts(int argc, char** argv)
 			case 'C':
 				params.bytes_before = params.bytes_after = parse_integer(optarg, &invalid);
 				break;
-			case 'c':
-				params.print_count = 1;
-				break;
-			case 'f':
-				params.first_only = 1;
-				break;
+*/
 			case 's':
 				params.skip_to = parse_integer(optarg, &invalid);
 				break;
 			case 'h':
-				usage(argv, 1);
+				usage(1);
+				break;
+			case 'F':
+				params.first_only = 1;
+				break;
+			case 'H':
+				params.print_filenames = 1;
+				break;
+			case 'b':
+				params.print_offsets = 1;
+				break;
+			case 'c':
+				params.print_count = 1;
+				break;
+			case 'l':
+				params.print_filenames_only = 1;
+				params.first_only = 1;
+				break;
+			case 'r':
+				params.recurse = 1;
 				break;
 			default:
-				usage(argv, 0);
+				usage(0);
 		}
 
 		if (invalid != LONGINT_OK) {
@@ -370,6 +337,7 @@ void parse_opts(int argc, char** argv)
 
 int main(int argc, char **argv)
 {
+	progname = argv[0];
 	unsigned char value[MAX_PATTERN], mask[MAX_PATTERN];
 	int len = 0;
 
@@ -377,7 +345,7 @@ int main(int argc, char **argv)
 
 	if ((argc-optind) < 1)
 	{
-		usage(argv, 0);
+		usage(0);
 		return 1;
 	}
 

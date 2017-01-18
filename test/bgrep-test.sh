@@ -38,9 +38,9 @@ fi
 # Test execution
 #
 echo Testing bgrep
-echo "${BGREP} 424242 /tmp/bgrepTest* | sed 's/^.*: //g' > /tmp/results.txt"
+echo "${BGREP} -b 424242 /tmp/bgrepTest* | sed 's/^.*: //g' > /tmp/results.txt"
 
-${BGREP} 424242 /tmp/bgrepTest* | sed 's/^.*: //g' > /tmp/results.txt
+${BGREP} -b 424242 /tmp/bgrepTest* | sed 's/^.*: //g' > /tmp/results.txt
 
 if diff -q /tmp/results.txt /tmp/bgrepExpectedResult.txt ; then
 	echo -e "\nAll tests passed."
