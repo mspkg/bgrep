@@ -48,7 +48,7 @@ const unsigned int MAX_PATTERN=1024; /* 0x400 */
 const unsigned int BUFFER_SIZE=2048; /* 0x800 */
 
 /* Config parameters */
-static struct bgrep_config params = { 0 };
+struct bgrep_config params = { 0 };
 
 
 void print_char(unsigned char c)

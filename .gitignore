@@ -36,3 +36,6 @@ lib/unistd.h
 lib/warn-on-use.h
 lib/wchar.h
 lib/wctype.h
+
+# Other temporary files
+**/*.swp
