@@ -8,7 +8,7 @@ static unsigned int xxd_count = 0;
 static const int XXD_MAX_COUNT = 16;
 
 static inline void print_char(unsigned char c);
-
+static inline void endline_xxd();
 
 void begin_match(const char *fname) {
 	filename = fname;
@@ -67,26 +67,16 @@ void print_xxd(const char *match, int len, off_t file_offset) {
 	}
 
 	if (file_offset > last_offset && xxd_count > 0) {
-		/* Force start of new line */
-		xxd_count = XXD_MAX_COUNT;
-	}
-
-	if (xxd_count == 0) {
-		if (params.print_filenames) {
-			printf("%s:%07jx:", filename, file_offset);
-		} else {
-			printf("%07jx:", file_offset);
-		}
+		endline_xxd();
 	}
 
 	while (match < endp) {
-		if (xxd_count == XXD_MAX_COUNT) {
+		if (xxd_count == 0) {
 			if (params.print_filenames) {
-				printf("\n%s:%07jx:", filename, file_offset);
+				printf("%s:%07jx:", filename, file_offset);
 			} else {
-				printf("\n%07jx:", file_offset);
+				printf("%07jx:", file_offset);
 			}
-			xxd_count = 0;
 		}
 
 		if ((xxd_count&1) == 0) {
@@ -98,11 +88,10 @@ void print_xxd(const char *match, int len, off_t file_offset) {
 		++xxd_count;
 		++match;
 		++file_offset;
-	}
 
-	if (xxd_count == XXD_MAX_COUNT) {
-		putchar('\n');
-		xxd_count = 0;
+		if (xxd_count == XXD_MAX_COUNT) {
+			endline_xxd();
+		}
 	}
 }
 
@@ -167,3 +156,8 @@ static inline void print_char(unsigned char c)
                 printf("\\x%02x", (int)c);
 }
 
+
+static inline void endline_xxd() {
+	putchar('\n');
+	xxd_count = 0;
+}
