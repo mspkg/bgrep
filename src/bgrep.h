@@ -18,10 +18,6 @@
 #  define STRPREFIX(a, b) (strncmp (a, b, strlen (b)) == 0)
 #endif /* STRPREFIX */
 
-#ifndef HEX_DIGIT
-#  define HEX_DIGIT(n) (((n)>9) ? ('a'+(n)-10) : ('0'+(n)))
-#endif /* HEX_DIGIT */
-
 #ifndef MIN
 #  define MIN(X,Y) (((X) < (Y)) ? (X) : (Y))
 #endif /* MIN */

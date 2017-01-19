@@ -1,11 +1,15 @@
 #include "bgrep.h"
 
+#undef HEX_DIGIT
+#define HEX_DIGIT(n) (hexx[(n)&0xf])
+
 static const char *filename;
 static off_t last_offset = 0;
 static unsigned long match_count = 0;
 static unsigned int xxd_count = 0;
 
 static const int XXD_MAX_COUNT = 16;
+static const char hexx[] = "0123456789abcdef";
 
 static inline void print_char(unsigned char c);
 static inline void endline_xxd();
@@ -83,8 +87,8 @@ void print_xxd(const char *match, int len, off_t file_offset) {
 			putchar(' ');
 		}
 
-		putchar(HEX_DIGIT((*match >> 4) & 0xf));
-		putchar(HEX_DIGIT(*match & 0xf));
+		putchar(HEX_DIGIT(*match >> 4));
+		putchar(HEX_DIGIT(*match));
 		++xxd_count;
 		++match;
 		++file_offset;
