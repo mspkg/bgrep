@@ -1,1 +1,1 @@
-TESTS = bgrep-test.sh
+TESTS = bgrep-test.sh bgrep-flagtests.sh

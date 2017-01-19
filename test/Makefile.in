@@ -1018,7 +1018,7 @@ target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-TESTS = bgrep-test.sh
+TESTS = bgrep-test.sh bgrep-flagtests.sh
 all: all-am
 
 .SUFFIXES:
@@ -1204,6 +1204,13 @@ recheck: all
 bgrep-test.sh.log: bgrep-test.sh
 	@p='bgrep-test.sh'; \
 	b='bgrep-test.sh'; \
+	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
+bgrep-flagtests.sh.log: bgrep-flagtests.sh
+	@p='bgrep-flagtests.sh'; \
+	b='bgrep-flagtests.sh'; \
 	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
 	--log-file $$b.log --trs-file $$b.trs \
 	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \

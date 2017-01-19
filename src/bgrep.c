@@ -91,7 +91,6 @@ off_t skip(int fd, off_t current, off_t n) {
 			n -= r;
 			result += r;
 		}
-
 	}
 
 	return result;

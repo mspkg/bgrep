@@ -7,6 +7,7 @@ static const char *filename;
 static off_t last_offset = 0;
 static unsigned long match_count = 0;
 static unsigned int xxd_count = 0;
+static char human_text[17];
 
 static const int XXD_MAX_COUNT = 16;
 static const char hexx[] = "0123456789abcdef";
@@ -19,6 +20,7 @@ void begin_match(const char *fname) {
 	last_offset = 0;
 	match_count = 0;
 	xxd_count = 0;
+	memset(human_text, 0, sizeof(human_text));
 }
 
 
@@ -53,8 +55,7 @@ void flush_match() {
 		}
 	} else {
 		if (xxd_count != 0) {
-			putchar('\n');
-			xxd_count = 0;
+			endline_xxd();
 		}
 	}
 }
@@ -89,6 +90,8 @@ void print_xxd(const char *match, int len, off_t file_offset) {
 
 		putchar(HEX_DIGIT(*match >> 4));
 		putchar(HEX_DIGIT(*match));
+		human_text[xxd_count] = (*match > 31 && *match < 127) ? *match : '.';
+
 		++xxd_count;
 		++match;
 		++file_offset;
@@ -162,6 +165,9 @@ static inline void print_char(unsigned char c)
 
 
 static inline void endline_xxd() {
-	putchar('\n');
+	int space_count = (XXD_MAX_COUNT-xxd_count)* 5 / 2;
+	printf("%.*s  %s\n", space_count, "                                        ", human_text);
+
+	memset(human_text, 0, sizeof(human_text));
 	xxd_count = 0;
 }
