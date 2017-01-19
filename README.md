@@ -6,7 +6,7 @@ strings. I'm even more annoyed by the fact that a simple search for
 
 Feel free to modify, branch, fork, improve. Re-licenses as BSD.
 
-### Building
+## Building
 First, you need to have [make](https://www.gnu.org/software/make/manual/make.html), [gcc](https://gcc.gnu.org/), [automake](https://www.gnu.org/software/automake/), and [gnulib](https://www.gnu.org/software/gnulib/) installed.
 On Debian and derivatives:
 ```
@@ -24,7 +24,7 @@ And optionally: (*note: this part is untested*)
 sudo make install
 ```
 
-### How it works
+## How `bgrep` works
 
 ```
 $ src/bgrep -h
@@ -53,65 +53,73 @@ usage: src/bgrep [-hFHbclr] [-s BYTES] <hex> [<path> [...]]
 
 ```
 
-### Examples
-**Basic (xxd-style) usage**
+## Examples
+### Basic (xxd-style) usage
 ```
 $ echo "1234foo89abfoof0123" | bgrep \"foo\"
-0000004: 666f 6f
-000000b: 666f 6f
+0000004: 666f 6f                                  foo
+000000b: 666f 6f                                  foo
 ```
-**Use `xxd -r` to convert back to bytes**
+### Use `xxd -r` to convert `bgrep` output back to bytes
+
+*Note:* `xxd -r` pads with null characters you can't see here!
 ```
-$ echo "1234foo89abfoof0123" | bgrep \"foo\" | xxd -r ; echo
+$ echo "1234foo89abfoof0123" | bgrep \"foo\" | xxd -r -c3 ; echo
 foofoo
 ```
-**Just the byte offset of each match**
+### Use `xxd -r | xxd` to understand the limitations of `xxd -r`
+```
+$ echo "1234foo89abfoof0123" | bgrep \"foo\" | xxd -r -c3 | xxd
+0000000: 0000 0000 666f 6f00 0000 0066 6f6f       ....foo....foo
+```
+### Print just the byte offset of each match
 ```
 $ echo "1234foo89abfoof0123" | bgrep -b \"foo\"
 00000004
 0000000b
 ```
-**Count the matches**
+### Count the matches
 ```
 $ echo "1234foo89abfoof0123" | bgrep -c \"foo\"
 2
 ```
-**Find-first option**
+### Find-first option
 ```
 $ echo "1234foo89abfoof0123" | bgrep -Fb \"foo\"
 00000004
 ```
-**Overlapping matches**
+### Overlapping matches
 ```
 $ echo "oofoofoofoo" | bgrep \"foof\"
 0000002: 666f 6f66 6f6f 66
 ```
-**This time with filenames and byte offsets**
+### This time with filenames and byte offsets
 ```
 $ echo "oofoofoofoo" | bgrep -Hb \"foof\"
 stdin:00000002
 stdin:00000005
 ```
-**Wildcard matches**
+### Wildcard matches
 ```
 $ echo "oof11f22foo" | bgrep -Hb '66????66'
 stdin:00000002
 stdin:00000005
 ```
-**Get the wildcard bytes with xxd-style output**
+### Get the wildcard bytes with xxd-style output
 ```
 $ echo "oof11f22foo" | bgrep '66????66'
-0000002: 6631 3166 3232 66
+0000002: 6631 3166 3232 66                        f11f22f
 ```
-**Skip forward in the file**
+### Skip forward in the file
 ```
 $ echo "oof11f22foo" | bgrep  -s 3 '66????66'
-0000005: 6632 3266
+0000005: 6632 3266                                f22f
 ```
-**Use `dd`-style block types**
+### Skip ahead using `dd`-style byte counts
 ```
-$ (dd if=/dev/urandom bs=1 count=2k ; echo foo ; dd if=/dev/urandom bs=1 count=1k) 2>/dev/null | bgrep -s 1k \"foo\"
-0000800: 666f 6f
+$ (dd if=/dev/urandom bs=1 count=2k status=none; echo foo; dd if=/dev/urandom bs=1 count=1k status=none) \
+   | bgrep -s 1k \"foo\"
+0000800: 666f 6f                                  foo
 ```
 ### Extreme example
 
