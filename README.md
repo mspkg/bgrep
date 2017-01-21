@@ -9,12 +9,12 @@ Feel free to modify, branch, fork, improve. Re-licenses as BSD.
 ## Building
 First, you need to have [make](https://www.gnu.org/software/make/manual/make.html), [gcc](https://gcc.gnu.org/), [automake](https://www.gnu.org/software/automake/), and [gnulib](https://www.gnu.org/software/gnulib/) installed.
 On Debian and derivatives:
-```
+```bash
 sudo apt-get install build-essential gnulib
 ```
 
 Once you have those tools, it is the normal autotools build process.
-```
+```bash
 ./configure
 make
 make check
@@ -24,10 +24,10 @@ And optionally: (*note: this part is untested*)
 sudo make install
 ```
 
-## How `bgrep` works
+## `bgrep` "manpage"
 
 ```
-$ src/bgrep -h
+$ bgrep -h
 bgrep version: 0.3
 usage: bgrep [-hFHbclr] [-s BYTES] [-B BYTES] [-A BYTES] [-C BYTES] <hex> [<path> [...]]
 
@@ -44,20 +44,30 @@ usage: bgrep [-hFHbclr] [-s BYTES] [-B BYTES] [-A BYTES] [-C BYTES] <hex> [<path
    -A BYTES   Print BYTES of context after the match (xxd output only)
    -C BYTES   Print BYTES of context before AND after the match (xxd output only)
 
-      Hex examples:
-         ffeedd??cc        Matches bytes 0xff, 0xee, 0xff, <any>, 0xcc
-         "foo"           Matches bytes 0x66, 0x6f, 0x6f
-         "foo"00"bar"   Matches "foo", a null character, then "bar"
-         "foo"??"bar"   Matches "foo", then any byte, then "bar"
+      <hex> may consist of the following elements:
+         hex byte values:                '666f6f 62 61 72'
+         quoted strings:                 '"foobar"'
+         wildcard bytes:                 '"header" ?? "trailer"'
+         repeated bytes/strings/groups:  '66*1k "foo"*3 (666f6f) * 7M'
+         escaped quotes in strings:      '"\"quoted\""'
+         any combinations thereof:       '(("foo"*3 ??)*1k ff "bar") * 2'
 
-      BYTES may be followed by the following multiplicative suffixes:
+      More examples:
+         'ffeedd??cc'        Matches bytes 0xff, 0xee, 0xff, <any>, 0xcc
+         '"foo"'             Matches bytes 0x66, 0x6f, 0x6f
+         '"foo"00"bar"'      Matches "foo", a null character, then "bar"
+         '"foo"??"bar"'      Matches "foo", then any byte, then "bar"
+
+      BYTES and REPEATS may be followed by the following multiplicative suffixes:
          c =1, w =2, b =512, kB =1000, K =1024, MB =1000*1000, M =1024*1024, xM =M
          GB =1000*1000*1000, G =1024*1024*1024, and so on for T, P, E, Z, Y.
+
+      This program was compiled to support a maximum of 64 nested repeat groups.
 ```
 
 ## Examples
 ### Basic (xxd-style) usage
-```
+```bash
 $ echo "1234foo89abfoof0123" | bgrep \"foo\"
 0000004: 666f 6f                                  foo
 000000b: 666f 6f                                  foo
@@ -65,7 +75,7 @@ $ echo "1234foo89abfoof0123" | bgrep \"foo\"
 ### Use `xxd -r` to convert `bgrep` output back to bytes
 
 *Note:* `xxd -r` pads with null characters you can't see here!
-```
+```bash
 $ echo "1234foo89abfoof0123" | bgrep \"foo\" | xxd -r -c3 ; echo
 foofoo
 ```
@@ -73,62 +83,62 @@ foofoo
 > `xxd -r` inserts (zero-valued) padding bytes whenever it sees a discontinuity on its input. It also believes every line of
 > input contains its configured number of columns (16 by default).  If you give it two lines of data that "overlap", it will
 > try to seek backward in the output file.  Pipes, standard output, and some devices do not support backward seek.
-```
+```bash
 $ echo "1234foo89abfoof0123" | bgrep \"foo\" | xxd -r | xxd
 xxd: sorry, cannot seek backwards.
 0000000: 0000 0000 666f 6f                        ....foo
 ```
 > One workaround is to change the number of columns in xxd. But this only works if all your data is the same length.
-```
+```bash
 $ echo "1234foo89abfoof0123" | bgrep \"foo\" | xxd -r -c3 | xxd
 0000000: 0000 0000 666f 6f00 0000 0066 6f6f       ....foo....foo
 ```
 
 ### Print just the byte offset of each match
-```
+```bash
 $ echo "1234foo89abfoof0123" | bgrep -b \"foo\"
 00000004
 0000000b
 ```
 ### Count the matches
-```
+```bash
 $ echo "1234foo89abfoof0123" | bgrep -c \"foo\"
 2
 ```
 ### Find-first option
-```
+```bash
 $ echo "1234foo89abfoof0123" | bgrep -Fb \"foo\"
 00000004
 ```
 ### Overlapping matches
-```
+```bash
 $ echo "oofoofoofoo" | bgrep \"foof\"
 0000002: 666f 6f66 6f6f 66                        foofoof
 ```
 ### This time with filenames and byte offsets
-```
+```bash
 $ echo "oofoofoofoo" | bgrep -Hb \"foof\"
 stdin:00000002
 stdin:00000005
 ```
 ### Wildcard matches
-```
+```bash
 $ echo "oof11f22foo" | bgrep -Hb '66????66'
 stdin:00000002
 stdin:00000005
 ```
 ### Get the wildcard bytes with xxd-style output
-```
+```bash
 $ echo "oof11f22foo" | bgrep '66????66'
 0000002: 6631 3166 3232 66                        f11f22f
 ```
 ### Skip forward in the file
-```
+```bash
 $ echo "oof11f22foo" | bgrep  -s 3 '66????66'
 0000005: 6632 3266                                f22f
 ```
 ### Skip ahead using `dd`-style byte counts
-```
+```bash
 $ (dd if=/dev/urandom bs=1 count=2k status=none; echo foo; dd if=/dev/urandom bs=1 count=1k status=none) \
    | bgrep -s 1k \"foo\"
 0000800: 666f 6f                                  foo
@@ -142,13 +152,13 @@ The magic number for GNU TAR files is "ustar  ".
 
 Let's get to work breaking down and reconstructing that archive!  First we take advantage of bzip2's block CRC property to find non-corrupt blocks.
 
-```
+```bash
 $ bzip2recover backups.tar.bz2
 ```
 This produces many small files, each called "rec00001backups.tar.bz2", "rec00002backups.tar.bz2", etc.  We can then string them together until we hit a bad one, searching for TAR headers...
 
-```
-$ bzcat rec*backups.tar.bz2 | bgrep -f  '"home"??????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????"ustar  "'
+```bash
+$ bzcat rec*backups.tar.bz2 | bgrep -F  '"home/" ??*252 "ustar  "'
 ```
 This will locate the first place in the stream where "ustar  " is preceeded by "home", 257 bytes earlier (257-4==253 wildcard bytes).  This is a strong indication that you've found the first GNU tar header.  We can then split the archive at the tar header (tar can expand any files if you start it at a header), then reconstruct files up to the next bad bzip2 block.  After the bad block, we can resume this process as needed until we squeeze all we can out of that corrupt archive.
 
