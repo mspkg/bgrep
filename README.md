@@ -69,20 +69,21 @@ $ echo "1234foo89abfoof0123" | bgrep \"foo\"
 $ echo "1234foo89abfoof0123" | bgrep \"foo\" | xxd -r -c3 ; echo
 foofoo
 ```
-### Use `xxd -r | xxd` to understand the limitations of `xxd`
-`xxd` inserts (zero-valued) padding bytes whenever it sees a discontinuity on its input. It also believes every line of
-input contains its configured number of bytes (16 by default).  If you give it two lines of data that "overlap", it will
-try to seek backward in the output file.
+> ### Notes on the limitations of `xxd`
+> `xxd` inserts (zero-valued) padding bytes whenever it sees a discontinuity on its input. It also believes every line of
+> input contains its configured number of bytes (16 by default).  If you give it two lines of data that "overlap", it will
+> try to seek backward in the output file.
 ```
 $ echo "1234foo89abfoof0123" | bgrep \"foo\" | xxd -r | xxd
 xxd: sorry, cannot seek backwards.
 0000000: 0000 0000 666f 6f                        ....foo
 ```
-One workaround is to change the number of columns in xxd. But this only works if all your data is the same length.
+> One workaround is to change the number of columns in xxd. But this only works if all your data is the same length.
 ```
 $ echo "1234foo89abfoof0123" | bgrep \"foo\" | xxd -r -c3 | xxd
 0000000: 0000 0000 666f 6f00 0000 0066 6f6f       ....foo....foo
 ```
+
 ### Print just the byte offset of each match
 ```
 $ echo "1234foo89abfoof0123" | bgrep -b \"foo\"
@@ -102,7 +103,7 @@ $ echo "1234foo89abfoof0123" | bgrep -Fb \"foo\"
 ### Overlapping matches
 ```
 $ echo "oofoofoofoo" | bgrep \"foof\"
-0000002: 666f 6f66 6f6f 66
+0000002: 666f 6f66 6f6f 66                        foofoof
 ```
 ### This time with filenames and byte offsets
 ```
