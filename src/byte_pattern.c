@@ -79,7 +79,7 @@ const unsigned char * byte_pattern_match(const struct byte_pattern *ptr, const u
 				if ((data[i] & ptr->mask[i]) != ptr->value[i])
 					break;
 			}
-			result = (i == ptr->len) ? endp : NULL;
+			result = (i == ptr->len) ? data : NULL;
 		}
 	}
 
