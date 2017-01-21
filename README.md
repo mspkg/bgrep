@@ -160,5 +160,5 @@ This produces many small files, each called "rec00001backups.tar.bz2", "rec00002
 ```bash
 $ bzcat rec*backups.tar.bz2 | bgrep -F  '"home/" ??*252 "ustar  "'
 ```
-This will locate the first place in the stream where "ustar  " is preceeded by "home", 257 bytes earlier (257-4==253 wildcard bytes).  This is a strong indication that you've found the first GNU tar header.  We can then split the archive at the tar header (tar can expand any files if you start it at a header), then reconstruct files up to the next bad bzip2 block.  After the bad block, we can resume this process as needed until we squeeze all we can out of that corrupt archive.
+This will locate the first place in the stream where "ustar  " is preceeded by "home", 257 bytes earlier (257-5==252 wildcard bytes).  This is a strong indication that you've found the first GNU tar header.  We can then split the archive at the tar header (tar can expand any files if you start it at a header), then reconstruct files up to the next bad bzip2 block.  After the bad block, we can resume this process as needed until we squeeze all we can out of that corrupt archive.
 
