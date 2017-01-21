@@ -283,8 +283,6 @@ struct byte_pattern *byte_pattern_from_string(const char *pattern_str) {
 		if (h[0] == '?' && h[1] == '?')	{
 			byte_pattern_append_char(pattern, 0, 0);
 			h += 2;
-		} else if (*h == ' ') {
-			++h;
 		} else {
 			int v0 = ascii2hex(h[0]);
 			int v1 = ascii2hex(h[1]); // may be null, but that is ok
