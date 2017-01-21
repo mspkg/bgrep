@@ -155,6 +155,21 @@ function test_dd_skip() {
 	fi
 }
 
+function test_bytes_before() {
+	input="1234foo89abfoof0123"
+	expected="$(echo ${input} | xxd -s 1 -l 6)"
+	actual="$(echo -n "${input}" | ${BGREP} -FB 3 \"foo\")"
+
+	if [[ "${expected}" != "${actual}" ]] ; then
+		echo "${FUNCNAME[0]}: Test FAILED."
+		echo -e "--- Expected ---"
+		echo "${expected}" | xxd
+		echo -e "+++ Actual +++"
+		echo "${actual}" | xxd
+		return 1
+	fi
+}
+
 failcount=0
 
 test_xxd_output || failcount=$((failcount+1))
@@ -167,6 +182,7 @@ test_overlap || failcount=$((failcount+1))
 test_wildcard || failcount=$((failcount+1))
 test_skip || failcount=$((failcount+1))
 test_dd_skip || failcount=$((failcount+1))
+test_bytes_before || failcount=$((failcount+1))
 
 if [[ ${failcount} -eq 0 ]] ; then
 	echo ALL TESTS PASSED.
