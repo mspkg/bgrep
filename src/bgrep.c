@@ -237,14 +237,26 @@ void usage(int full) {
 			"   -A BYTES   Print BYTES of context after the match (xxd output only)\n"
 			"   -C BYTES   Print BYTES of context before AND after the match (xxd output only)\n"
 			"\n"
-			"      Hex examples:\n"
-			"         ffeedd??cc        Matches bytes 0xff, 0xee, 0xff, <any>, 0xcc\n"
-			"         \"foo\"           Matches bytes 0x66, 0x6f, 0x6f\n"
-			"         \"foo\"00\"bar\"   Matches \"foo\", a null character, then \"bar\"\n"
-			"         \"foo\"??\"bar\"   Matches \"foo\", then any byte, then \"bar\"\n\n"
-			"      BYTES may be followed by the following multiplicative suffixes:\n"
+			"      <hex> may consist of the following elements:\n"
+			"         hex byte values:                '666f6f 62 61 72'\n"
+			"         quoted strings:                 '\"foobar\"'\n"
+			"         wildcard bytes:                 '\"header\" ?? \"trailer\"'\n"
+			"         repeated bytes/strings/groups:  '66*1k \"foo\"*3 (666f6f) * 7M'\n"
+			"         escaped quotes in strings:      '\"\\\"quoted\\\"\"'\n"
+			"         any combinations thereof:       '((\"foo\"*3 ??)*1k ff \"bar\") * 2'\n"
+			"\n"
+			"      More examples:\n"
+			"         'ffeedd??cc'        Matches bytes 0xff, 0xee, 0xff, <any>, 0xcc\n"
+			"         '\"foo\"'             Matches bytes 0x66, 0x6f, 0x6f\n"
+			"         '\"foo\"00\"bar\"'      Matches \"foo\", a null character, then \"bar\"\n"
+			"         '\"foo\"??\"bar\"'      Matches \"foo\", then any byte, then \"bar\"\n"
+			"\n"
+			"      BYTES and REPEATS may be followed by the following multiplicative suffixes:\n"
 			"         c =1, w =2, b =512, kB =1000, K =1024, MB =1000*1000, M =1024*1024, xM =M\n" 
 			"         GB =1000*1000*1000, G =1024*1024*1024, and so on for T, P, E, Z, Y.\n"
+			"\n"
+			"      This program was compiled to support a maximum of %d nested repeat groups.\n",
+			MAX_REPEAT_GROUPS
 		);
 	}
 	exit(1);

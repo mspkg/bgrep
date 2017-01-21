@@ -9,8 +9,23 @@
 
 #include "bgrep.h"
 
+#undef END_MULTIPLIER_CHARS
+#define END_MULTIPLIER_CHARS  " \t\v\r\n\f\"()"
+
 enum { INITIAL_BUFSIZE = 2048, MIN_REALLOC = 16 };
+
+enum parse_modes { MODE_HEX, MODE_TXT, MODE_TXT_ESC, MODE_MULTIPLY, MODE_WAITING_GROUP_MULT };
+enum token_types {
+	QUOTE_TOKEN,
+	ESC_TOKEN,
+	OPEN_GROUP_TOKEN, CLOSE_GROUP_TOKEN,
+	MULTIPLIER_TOKEN,
+	WHITESPACE_TOKEN,
+	OTHER_TOKEN
+};
+
 static int ascii2hex(char c);
+static enum token_types get_token_type(char c);
 
 
 /* Initializes a new byte_pattern with a small amount of reserved storage but len=0 */
@@ -45,7 +60,7 @@ void byte_pattern_free(struct byte_pattern *ptr) {
 void byte_pattern_reserve(struct byte_pattern *ptr, size_t num_bytes) {
 	if (ptr->capacity < num_bytes) {
 		ptr->value = xrealloc(ptr->value, num_bytes);
-		ptr->mask = xrealloc(ptr->value, num_bytes);
+		ptr->mask = xrealloc(ptr->mask, num_bytes);
 		ptr->capacity = num_bytes;
 	}
 }
@@ -83,7 +98,7 @@ void byte_pattern_repeat(struct byte_pattern *ptr, size_t num_bytes, size_t repe
 	byte_pattern_reserve(ptr, ptr->len + num_bytes * repeat);
 
 	unsigned char *value = xmemdup(ptr->value + ptr->len - num_bytes, num_bytes);
-	unsigned char *mask = xmemdup(ptr->value + ptr->len - num_bytes, num_bytes);
+	unsigned char *mask = xmemdup(ptr->mask + ptr->len - num_bytes, num_bytes);
 
 	for (; repeat > 0; --repeat) {
 		byte_pattern_append(ptr, value, mask, num_bytes);
@@ -115,46 +130,156 @@ const unsigned char * byte_pattern_match(const struct byte_pattern *ptr, const u
 struct byte_pattern *byte_pattern_from_string(const char *pattern_str) {
 	struct byte_pattern *pattern = xmalloc(sizeof(struct byte_pattern));
 	byte_pattern_init(pattern);
+	size_t groupstack[MAX_REPEAT_GROUPS];
+	int groupstack_top = 0;
 
 	const char *h = pattern_str;
-	enum {MODE_HEX,MODE_TXT,MODE_TXT_ESC} parse_mode = MODE_HEX;
-
+	enum parse_modes parse_mode = MODE_HEX;
 	while (*h) {
-		int on_quote = (h[0] == '"');
-		int on_esc = (h[0] == '\\');
-		int on_open_paren = (h[0] == '(');
-		int on_close_paren = (h[0] == ')');
+
+		enum token_types token_type = get_token_type(*h);
 
 		switch (parse_mode) {
 			case MODE_HEX:
-				if (on_quote) {
-					parse_mode = MODE_TXT;
-					h++;
-					continue;
+				switch (token_type) {
+					case QUOTE_TOKEN:
+						if (groupstack_top >= MAX_REPEAT_GROUPS) {
+							fprintf(stderr,
+								"%s: Too many groups (%d). Recompile with higher MAX_REPEAT_GROUPS\n",
+								program_name, groupstack_top);
+							goto CLEANUP;
+						}
+						groupstack[groupstack_top++] = pattern->len;
+						parse_mode = MODE_TXT;
+						++h;
+						continue;
+
+					case MULTIPLIER_TOKEN:
+						if (pattern-> len < 1) {
+							fprintf(stderr,
+								"%s: cannot repeat an empty pattern!\n", program_name);
+							goto CLEANUP;
+						} else if (groupstack_top >= MAX_REPEAT_GROUPS) {
+							fprintf(stderr,
+								"%s: Cannot repeat: Too many groups (%d). Recompile with higher MAX_REPEAT_GROUPS\n",
+								program_name, groupstack_top);
+							goto CLEANUP;
+						}
+						groupstack[groupstack_top++] = pattern->len - 1;
+						parse_mode = MODE_MULTIPLY;
+						++h;
+						continue;
+
+					case WHITESPACE_TOKEN:
+						++h;
+						continue;
+
+					case OPEN_GROUP_TOKEN:
+						if (groupstack_top >= MAX_REPEAT_GROUPS) {
+							fprintf(stderr,
+								"%s: Too many groups (%d). Recompile with higher MAX_REPEAT_GROUPS\n",
+								program_name, groupstack_top);
+							goto CLEANUP;
+						}
+						groupstack[groupstack_top++] = pattern->len;
+						++h;
+						continue;
+
+					case CLOSE_GROUP_TOKEN:
+						if (groupstack_top < 1) {
+							fprintf(stderr,
+								"%s: Unexpected close group character ')' (missing ')'?)\n",
+								program_name);
+						}
+						parse_mode = MODE_WAITING_GROUP_MULT;
+						++h;
+						continue;
+
+					case ESC_TOKEN:
+						fprintf(stderr, "%s: Unexpected escape character '\\' in hex string\n", program_name);
+						goto CLEANUP;
+
+					case OTHER_TOKEN:
+					default:
+						break;
 				}
 				// process hex strings outside this switch
 				break;
+
 			case MODE_TXT:
-				if (on_quote) {
-					parse_mode = MODE_HEX;
-					h++;
-					continue;
-				} else if (on_esc) {
-					parse_mode = MODE_TXT_ESC;
-					h++;
-					continue;
-				} else {
-					byte_pattern_append_char(pattern, *h++, 0xff);
+				switch (token_type) {
+					case QUOTE_TOKEN:
+						parse_mode = MODE_WAITING_GROUP_MULT;
+						++h;
+						continue;
+					case ESC_TOKEN:
+						parse_mode = MODE_TXT_ESC;
+						++h;
+						continue;
+					default:
+						byte_pattern_append_char(pattern, *h++, 0xff);
+						continue;
 				}
-				continue;
+				// unreachable
 
 			case MODE_TXT_ESC:
 				byte_pattern_append_char(pattern, *h++, 0xff);
 				parse_mode = MODE_TXT;
 				continue;
+
+			case MODE_WAITING_GROUP_MULT:
+				switch (token_type) {
+					case WHITESPACE_TOKEN:
+						++h;
+						continue;
+					case MULTIPLIER_TOKEN:
+						parse_mode = MODE_MULTIPLY;
+						++h;
+						continue;
+					default:
+						// No need to track the group any more: they didn't try to repeat
+						--groupstack_top;
+						parse_mode = MODE_HEX;
+						// Note: no ++h!
+						continue;
+				}
+				// unreachable
+
+			case MODE_MULTIPLY: {
+				if (token_type == WHITESPACE_TOKEN) {
+					++h;
+					continue;
+				}
+
+				size_t mult_len = strcspn(h, END_MULTIPLIER_CHARS);
+				if (mult_len == 0) {
+					fprintf(stderr, "%s: missing value for multiplier\n", program_name);
+					goto CLEANUP;
+				}
+				char multiplier[mult_len + 1];
+				strtol_error invalid = LONGINT_OK;
+				uintmax_t numrepeat = 0;
+
+				strncpy(multiplier, h, mult_len);
+				multiplier[mult_len] = 0;
+				numrepeat = parse_integer(multiplier, &invalid);
+				if (invalid != LONGINT_OK) {
+					fprintf(stderr,
+						"%s: unable to parse group multiplier %s\n", program_name, quote(multiplier));
+					goto CLEANUP;
+				} else if (numrepeat < 1) {
+					fprintf(stderr,
+						"%s: cannot repeat a group less than once!\n", program_name);
+					goto CLEANUP;
+				}
+				byte_pattern_repeat(pattern, pattern->len - groupstack[--groupstack_top], numrepeat-1);
+				h += mult_len;
+				parse_mode = MODE_HEX;
+				continue;
+			}
 		}
 
-		// Can only get here in hex mode
+		// Can only get here in hex mode (token_type=OTHER)
 		if (h[0] == '?' && h[1] == '?')	{
 			byte_pattern_append_char(pattern, 0, 0);
 			h += 2;
@@ -194,6 +319,24 @@ CLEANUP:
 	return NULL;
 }
 
+
+static enum token_types get_token_type(char c) {
+	switch (c) {
+		case '"':
+			return QUOTE_TOKEN;
+		case '\\':
+			return ESC_TOKEN;
+		case '(':
+			return OPEN_GROUP_TOKEN;
+		case ')':
+			return CLOSE_GROUP_TOKEN;
+		case '*':
+			return MULTIPLIER_TOKEN;
+		default:
+			break;
+	}
+	return isspace(c) ? WHITESPACE_TOKEN : OTHER_TOKEN;
+}
 
 
 static int ascii2hex(char c) {

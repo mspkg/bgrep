@@ -59,6 +59,8 @@ struct byte_pattern {
 	size_t len;
 };
 
+enum { MAX_REPEAT_GROUPS = 64 };
+
 extern struct bgrep_config params;
 
 /* bgrep.c */
