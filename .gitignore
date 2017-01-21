@@ -39,3 +39,4 @@ lib/wctype.h
 
 # Other temporary files
 **/*.swp
+**/*~

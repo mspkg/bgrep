@@ -56,6 +56,8 @@
 /xstrtol.c
 /xstrtol.h
 /xstrtoul.c
+/progname.c
+/progname.h
 /strtoimax.c
 /strtol.c
 /strtoul.c

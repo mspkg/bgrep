@@ -10,6 +10,7 @@
 #include <errno.h>
 #include <string.h>
 
+/* gnulib dependencies */
 #include "xstrtol.h"
 
 #define BGREP_VERSION "0.3"
@@ -33,6 +34,12 @@
 #  define O_BINARY 0
 #endif
 
+enum bgrep_print_modes {
+	XXD_DUMP = 0,
+	COUNT_MATCHES=1,
+	OFFSETS=2,
+	LIST_FILENAMES=3
+};
 
 /* Config parameters */
 struct bgrep_config {
@@ -40,28 +47,41 @@ struct bgrep_config {
 	uintmax_t bytes_after;
 	uintmax_t skip_to;
 	int first_only;
-	int print_count;
-	int print_offsets;
 	int print_filenames;
-	int print_filenames_only;
 	int recurse;
+	enum bgrep_print_modes print_mode;
+};
+
+struct byte_pattern {
+	unsigned char *value;
+	unsigned char *mask;
+	size_t capacity;
+	size_t len;
 };
 
 extern struct bgrep_config params;
-extern const char *progname;
-extern const unsigned int BUFFER_SIZE;
 
 /* bgrep.c */
 void die(int status, const char *msg, ...);
+
+/* byte_pattern.c */
+void byte_pattern_init(struct byte_pattern *ptr);
+void byte_pattern_free(struct byte_pattern *ptr);
+void byte_pattern_reserve(struct byte_pattern *ptr, size_t num_bytes);
+void byte_pattern_append(struct byte_pattern *ptr, unsigned char *value, unsigned char *mask, size_t len);
+void byte_pattern_append_char(struct byte_pattern *ptr, unsigned char value, unsigned char mask);
+void byte_pattern_repeat(struct byte_pattern *ptr, size_t num_bytes, size_t repeat);
+
+/* parse_integer.c */
 uintmax_t parse_integer(const char *str, strtol_error *invalid);
 
 /* print_output.c */
 void begin_match(const char *fname);
-void print_match(const char *match, int len, off_t file_offset);
-void print_xxd(const char *match, int len, off_t file_offset);
+void print_before(const char *buf, size_t len, off_t file_offset);
+void print_match(const char *match, size_t len, off_t file_offset);
+void print_after_fd(int fd, off_t file_offset);
 void flush_match();
-
-void dump_context(int fd, unsigned long long pos);
+void print_xxd(const char *match, size_t len, off_t file_offset);
 
 #endif /* BGREP_H */
 

@@ -40,16 +40,31 @@
 #include <stdarg.h>
 #include <errno.h>
 
+/* gnulib dependencies */
+#include "progname.h"
 #include "quote.h"
 #include "xstrtol.h"
-#include "bgrep.h"
+#include "xalloc.h"
 
-const unsigned int MAX_PATTERN=1024; /* 0x400 */
-const unsigned int BUFFER_SIZE=2048; /* 0x800 */
+#include "bgrep.h"
 
 /* Config parameters */
 struct bgrep_config params = { 0 };
-const char *progname;
+enum { INITIAL_BUFSIZE = 2048, MIN_REALLOC = 16 };
+
+
+void die(int status, const char* msg, ...)
+{
+	va_list ap;
+	va_start(ap, msg);
+
+	fprintf(stderr, "%s:", program_name);
+	vfprintf(stderr, msg, ap);
+	fprintf(stderr, "\n");
+
+	va_end(ap);
+	exit(status);
+}
 
 
 int ascii2hex(char c)
@@ -75,14 +90,14 @@ off_t skip(int fd, off_t current, off_t n) {
 	if (result == (off_t)-1) {
 		if (n < 0)
 		{
-			perror("file does not support backward lseek");
+			perror("file descriptor does not support backward lseek");
 			return -1;
 		}
 		/* Skip forward the hard way. */
-		unsigned char buf[BUFFER_SIZE];
+		unsigned char buf[INITIAL_BUFSIZE];
 		result = current;
 		while (n > 0) {
-			int r = read(fd, buf, MIN(n, BUFFER_SIZE));
+			ssize_t r = read(fd, buf, MIN(n, sizeof(buf)));
 			if (r < 1)
 			{
 				if (r != 0) perror("read");
@@ -97,13 +112,13 @@ off_t skip(int fd, off_t current, off_t n) {
 }
 
 
-int searchfile(const char *filename, int fd, const unsigned char *value, const unsigned char *mask, int len)
+int searchfile(const char *filename, int fd, const unsigned char *value, const unsigned char *mask, size_t len)
 {
 	int result = 0;
-	int count = 0;
-	unsigned char buf[BUFFER_SIZE];
-	const int lenm1 = len-1;
-	const unsigned char *endp = buf+BUFFER_SIZE;
+	const size_t lenm1 = len-1;
+	const size_t search_size = MIN(INITIAL_BUFSIZE, 2*len);
+	unsigned char *buf = xmalloc(params.bytes_before + search_size);
+	const unsigned char *endp = buf + search_size - lenm1;
 	unsigned char *readp = buf;
 	off_t file_offset = 0;
 
@@ -118,17 +133,18 @@ int searchfile(const char *filename, int fd, const unsigned char *value, const u
 		}
 	}
 
-	int r;
+	ssize_t r;
 
 	/* Prime the buffer with len-1 bytes */
-	int primed = 0;
+	size_t primed = 0;
 	while (primed < lenm1)
 	{
 		r = read(fd, readp+primed, (lenm1-primed));
 		if (r < 1)
 		{
 			if (r < 0) perror("read");
-			return -1;
+			result = -1;
+			goto CLEANUP;
 		}
 		primed += r;
 	}
@@ -144,7 +160,7 @@ int searchfile(const char *filename, int fd, const unsigned char *value, const u
 			break;
 		}
 
-		int i;
+		size_t i;
 		for (i = 0; i < len; ++i)
 		{
 			if ((readp[i] & mask[i]) != value[i])
@@ -153,8 +169,10 @@ int searchfile(const char *filename, int fd, const unsigned char *value, const u
 
 		if (i == len)
 		{
-			/* TODO support context dumping here! */
+			size_t before = MIN(readp-buf, params.bytes_before);
+			print_before(readp-before, before, file_offset-before);
 			print_match(readp, len, file_offset);
+			print_after_fd(fd, file_offset+len);
 			if (params.first_only)
 				break;
 		}
@@ -163,14 +181,17 @@ int searchfile(const char *filename, int fd, const unsigned char *value, const u
 		++file_offset;
 
 		/* Shift the buffer every time we run out of space */
-		if ((readp+lenm1) >= endp)
+		if (readp >= endp)
 		{
-			memmove(buf, readp, lenm1);
-			readp = buf;
+			size_t before = MIN(readp-buf, params.bytes_before);
+			memmove(buf, readp-before, lenm1+before);
+			readp = buf+before;
 		}
 	}
 
 	flush_match();
+CLEANUP:
+	free(buf);
 	return result;
 }
 
@@ -225,27 +246,13 @@ int recurse(const char *path, const unsigned char *value, const unsigned char *m
 	return result;
 }
 
-void die(int status, const char* msg, ...)
-{
-	va_list ap;
-	va_start(ap, msg);
-
-	fprintf(stderr, "%s:", progname);
-	vfprintf(stderr, msg, ap);
-	fprintf(stderr, "\n");
-
-	va_end(ap);
-	exit(status);
-}
-
 /* NOTE: -A, -B, and -C disabled (for now) */
 void usage(int full)
 {
 	fprintf(stderr, "bgrep version: %s\n", BGREP_VERSION);
 	fprintf(stderr,
-//		"usage: %s [-hFHbclr] [-s BYTES] [-B BYTES] [-A BYTES] [-C BYTES] <hex> [<path> [...]]\n\n",
-		"usage: %s [-hFHbclr] [-s BYTES] <hex> [<path> [...]]\n\n",
-		 progname);
+		"usage: %s [-hFHbclr] [-s BYTES] [-B BYTES] [-A BYTES] [-C BYTES] <hex> [<path> [...]]\n\n",
+		 program_name);
 	if (full)
 	{
 		fprintf(stderr,
@@ -258,9 +265,9 @@ void usage(int full)
 			"              which output would normally have been printed. Implies -F\n"
 			"   -r         Recurse into directories\n"
 			"   -s BYTES   Skip forward by BYTES before searching\n"
-//			"   -B BYTES   Print BYTES of context before the match (xxd output only)\n"
-//			"   -A BYTES   Print BYTES of context after the match (xxd output only)\n"
-//			"   -C BYTES   Print BYTES of context before AND after the match (xxd output only)\n"
+			"   -B BYTES   Print BYTES of context before the match (xxd output only)\n"
+			"   -A BYTES   Print BYTES of context after the match (xxd output only)\n"
+			"   -C BYTES   Print BYTES of context before AND after the match (xxd output only)\n"
 			"\n"
 			"      Hex examples:\n"
 			"         ffeedd??cc        Matches bytes 0xff, 0xee, 0xff, <any>, 0xcc\n"
@@ -284,7 +291,6 @@ void parse_opts(int argc, char** argv)
 	{
 		switch (c)
 		{
-/*
 			case 'A':
 				params.bytes_after = parse_integer(optarg, &invalid);
 				break;
@@ -294,7 +300,6 @@ void parse_opts(int argc, char** argv)
 			case 'C':
 				params.bytes_before = params.bytes_after = parse_integer(optarg, &invalid);
 				break;
-*/
 			case 's':
 				params.skip_to = parse_integer(optarg, &invalid);
 				break;
@@ -308,13 +313,13 @@ void parse_opts(int argc, char** argv)
 				params.print_filenames = 1;
 				break;
 			case 'b':
-				params.print_offsets = 1;
+				params.print_mode = OFFSETS;
 				break;
 			case 'c':
-				params.print_count = 1;
+				params.print_mode = COUNT_MATCHES;
 				break;
 			case 'l':
-				params.print_filenames_only = 1;
+				params.print_mode = LIST_FILENAMES;
 				params.first_only = 1;
 				break;
 			case 'r':
@@ -336,9 +341,7 @@ void parse_opts(int argc, char** argv)
 
 int main(int argc, char **argv)
 {
-	progname = argv[0];
-	unsigned char value[MAX_PATTERN], mask[MAX_PATTERN];
-	int len = 0;
+	set_program_name(*argv);
 
 	parse_opts(argc, argv);
 
@@ -351,10 +354,14 @@ int main(int argc, char **argv)
 	argv += optind - 1; /* advance the pointer to the first non-opt arg */
 	argc -= optind - 1;
 
+	int result = 0;
+	struct byte_pattern pattern;
+	byte_pattern_init(&pattern);
+
 	char *h = argv[1];
 	enum {MODE_HEX,MODE_TXT,MODE_TXT_ESC} parse_mode = MODE_HEX;
 
-	while (*h && (parse_mode != MODE_HEX || h[1]) && len < MAX_PATTERN)
+	while (*h && (parse_mode != MODE_HEX || h[1]))
 	{
 		int on_quote = (h[0] == '"');
 		int on_esc = (h[0] == '\\');
@@ -384,14 +391,12 @@ int main(int argc, char **argv)
 					continue;
 				}
 
-				value[len] = h[0];
-				mask[len++] = 0xff;
+				byte_pattern_append_char(&pattern, h[0], 0xff);
 				h++;
 				continue;
 
 			case MODE_TXT_ESC:
-				value[len] = h[0];
-				mask[len++] = 0xff;
+				byte_pattern_append_char(&pattern, h[0], 0xff);
 				parse_mode = MODE_TXT;
 				h++;
 				continue;
@@ -399,8 +404,7 @@ int main(int argc, char **argv)
 		//
 		if (h[0] == '?' && h[1] == '?')
 		{
-			value[len] = mask[len] = 0;
-			len++;
+			byte_pattern_append_char(&pattern, 0, 0);
 			h += 2;
 		} else if (h[0] == ' ')
 		{
@@ -413,29 +417,33 @@ int main(int argc, char **argv)
 			if ((v0 == -1) || (v1 == -1))
 			{
 				fprintf(stderr, "invalid hex string!\n");
-				return 2;
+				result = 2;
+				goto CLEANUP;
 			}
-			value[len] = (v0 << 4) | v1; mask[len++] = 0xFF;
+			byte_pattern_append_char(&pattern, (v0 << 4) | v1, 0xff);
 		}
 	}
 
-	if (!len || *h)
+	if (!pattern.len || *h)
 	{
 		fprintf(stderr, "invalid/empty search string\n");
-		return 2;
+		result = 2;
+		goto CLEANUP;
 	}
 
-	int result = 0;
 	if (argc < 3)
-		result = searchfile("stdin", 0, value, mask, len);
+		result = searchfile("stdin", 0, pattern.value, pattern.mask, pattern.len);
 	else
 	{
 		int c = 2;
 		while (c < argc) {
-			result += recurse(argv[c++], value, mask, len);
+			result += recurse(argv[c++], pattern.value, pattern.mask, pattern.len);
 			if (result && params.first_only)
 				break;
 		}
 	}
+
+CLEANUP:
+	byte_pattern_free(&pattern);
 	return result == 0 ? 3 : 0;
 }

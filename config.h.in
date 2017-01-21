@@ -58,6 +58,14 @@
    don't. */
 #undef HAVE_DECL_MBSINIT
 
+/* Define to 1 if you have the declaration of `program_invocation_name', and
+   to 0 if you don't. */
+#undef HAVE_DECL_PROGRAM_INVOCATION_NAME
+
+/* Define to 1 if you have the declaration of `program_invocation_short_name',
+   and to 0 if you don't. */
+#undef HAVE_DECL_PROGRAM_INVOCATION_SHORT_NAME
+
 /* Define to 1 if you have the declaration of `strerror_r', and to 0 if you
    don't. */
 #undef HAVE_DECL_STRERROR_R

@@ -5475,6 +5475,7 @@ $as_echo "$ac_cv_should_define__xopen_source" >&6; }
   # Code from module msvc-nothrow:
   # Code from module multiarch:
   # Code from module nocrash:
+  # Code from module progname:
   # Code from module quote:
   # Code from module quotearg:
   # Code from module quotearg-simple:
@@ -10874,6 +10875,30 @@ $as_echo "#define HAVE_MSVC_INVALID_PARAMETER_HANDLER 1" >>confdefs.h
   gl_LIBOBJS="$gl_LIBOBJS msvc-nothrow.$ac_objext"
 
   fi
+
+  ac_fn_c_check_decl "$LINENO" "program_invocation_name" "ac_cv_have_decl_program_invocation_name" "#include <errno.h>
+"
+if test "x$ac_cv_have_decl_program_invocation_name" = xyes; then :
+  ac_have_decl=1
+else
+  ac_have_decl=0
+fi
+
+cat >>confdefs.h <<_ACEOF
+#define HAVE_DECL_PROGRAM_INVOCATION_NAME $ac_have_decl
+_ACEOF
+
+  ac_fn_c_check_decl "$LINENO" "program_invocation_short_name" "ac_cv_have_decl_program_invocation_short_name" "#include <errno.h>
+"
+if test "x$ac_cv_have_decl_program_invocation_short_name" = xyes; then :
+  ac_have_decl=1
+else
+  ac_have_decl=0
+fi
+
+cat >>confdefs.h <<_ACEOF
+#define HAVE_DECL_PROGRAM_INVOCATION_SHORT_NAME $ac_have_decl
+_ACEOF
 
 
       :
