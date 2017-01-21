@@ -51,7 +51,6 @@ void print_match(const char *match, size_t len, off_t file_offset) {
 	}
 
 	++match_count;
-	last_offset = MAX(file_offset+len, last_offset);
 }
 
 
@@ -166,6 +165,9 @@ void print_xxd(const char *match, size_t len, off_t file_offset) {
 			endline_xxd();
 		}
 	}
+
+	last_offset = MAX(file_offset, last_offset);
+
 }
 
 
