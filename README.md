@@ -29,7 +29,7 @@ sudo make install
 ```
 $ src/bgrep -h
 bgrep version: 0.3
-usage: src/bgrep [-hFHbclr] [-s BYTES] <hex> [<path> [...]]
+usage: bgrep [-hFHbclr] [-s BYTES] [-B BYTES] [-A BYTES] [-C BYTES] <hex> [<path> [...]]
 
    -h         Print this help
    -F         Stop scanning after the first match
@@ -40,6 +40,9 @@ usage: src/bgrep [-hFHbclr] [-s BYTES] <hex> [<path> [...]]
               which output would normally have been printed. Implies -F
    -r         Recurse into directories
    -s BYTES   Skip forward by BYTES before searching
+   -B BYTES   Print BYTES of context before the match (xxd output only)
+   -A BYTES   Print BYTES of context after the match (xxd output only)
+   -C BYTES   Print BYTES of context before AND after the match (xxd output only)
 
       Hex examples:
          ffeedd??cc        Matches bytes 0xff, 0xee, 0xff, <any>, 0xcc
@@ -50,7 +53,6 @@ usage: src/bgrep [-hFHbclr] [-s BYTES] <hex> [<path> [...]]
       BYTES may be followed by the following multiplicative suffixes:
          c =1, w =2, b =512, kB =1000, K =1024, MB =1000*1000, M =1024*1024, xM =M
          GB =1000*1000*1000, G =1024*1024*1024, and so on for T, P, E, Z, Y.
-
 ```
 
 ## Examples
