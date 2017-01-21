@@ -170,6 +170,44 @@ function test_bytes_before() {
 	fi
 }
 
+function test_bytes_after() {
+	# "bytes after" requires the ability to seek in the file.
+	# You can't seek on stdin, so we have to make a file
+	(dd if=/dev/urandom count=2 status=none ; echo "1234foo89abfoof0123" ) > tst.bin
+
+	expected=$'0000404: 666f 6f38 3961                           foo89a\n000040b: 666f 6f66 3031                           foof01'
+	actual="$(${BGREP} -A 3 \"foo\" tst.bin)"
+	rm tst.bin
+
+	if [[ "${expected}" != "${actual}" ]] ; then
+		echo "${FUNCNAME[0]}: Test FAILED."
+		echo -e "--- Expected ---"
+		echo "${expected}" | xxd
+		echo -e "+++ Actual +++"
+		echo "${actual}" | xxd
+		return 1
+	fi
+}
+
+function test_bytes_around() {
+	# The -C flag requires the ability to seek in the file, just like -B
+	# You can't seek on stdin, so we have to make a file
+	(dd if=/dev/urandom count=2 status=none ; echo "1234foo89abfoof0123" ) > tst.bin
+
+	expected="0000401: 3233 3466 6f6f 3839 6162 666f 6f66 3031  234foo89abfoof01"
+	actual="$(${BGREP} -C 3 \"foo\" tst.bin)"
+	rm tst.bin
+
+	if [[ "${expected}" != "${actual}" ]] ; then
+		echo "${FUNCNAME[0]}: Test FAILED."
+		echo -e "--- Expected ---"
+		echo "${expected}" | xxd
+		echo -e "+++ Actual +++"
+		echo "${actual}" | xxd
+		return 1
+	fi
+}
+
 failcount=0
 
 test_xxd_output || failcount=$((failcount+1))
@@ -183,6 +221,8 @@ test_wildcard || failcount=$((failcount+1))
 test_skip || failcount=$((failcount+1))
 test_dd_skip || failcount=$((failcount+1))
 test_bytes_before || failcount=$((failcount+1))
+test_bytes_after || failcount=$((failcount+1))
+test_bytes_around || failcount=$((failcount+1))
 
 if [[ ${failcount} -eq 0 ]] ; then
 	echo ALL TESTS PASSED.
