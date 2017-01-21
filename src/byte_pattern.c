@@ -122,29 +122,30 @@ struct byte_pattern *byte_pattern_from_string(const char *pattern_str) {
 	while (*h) {
 		int on_quote = (h[0] == '"');
 		int on_esc = (h[0] == '\\');
+		int on_open_paren = (h[0] == '(');
+		int on_close_paren = (h[0] == ')');
 
 		switch (parse_mode) {
 			case MODE_HEX:
 				if (on_quote) {
 					parse_mode = MODE_TXT;
 					h++;
-					continue; /* works under switch - will continue the loop*/
+					continue;
 				}
-				break; /* this one is for switch */
+				// process hex strings outside this switch
+				break;
 			case MODE_TXT:
 				if (on_quote) {
 					parse_mode = MODE_HEX;
 					h++;
 					continue;
-				}
-
-				if (on_esc) {
+				} else if (on_esc) {
 					parse_mode = MODE_TXT_ESC;
 					h++;
 					continue;
+				} else {
+					byte_pattern_append_char(pattern, *h++, 0xff);
 				}
-
-				byte_pattern_append_char(pattern, *h++, 0xff);
 				continue;
 
 			case MODE_TXT_ESC:
@@ -152,7 +153,8 @@ struct byte_pattern *byte_pattern_from_string(const char *pattern_str) {
 				parse_mode = MODE_TXT;
 				continue;
 		}
-		//
+
+		// Can only get here in hex mode
 		if (h[0] == '?' && h[1] == '?')	{
 			byte_pattern_append_char(pattern, 0, 0);
 			h += 2;
@@ -172,11 +174,17 @@ struct byte_pattern *byte_pattern_from_string(const char *pattern_str) {
 		}
 	}
 
-	if (!pattern->len) {
-		fprintf(stderr, "%s: empty search string\n", program_name);
+	if (parse_mode == MODE_TXT) {
+		fprintf(stderr, "%s: missing closing `\"' in pattern string\n", program_name);
+		goto CLEANUP;
+	} else if (parse_mode == MODE_TXT_ESC) {
+		fprintf(stderr, "%s: missing character after escape ('\\') in pattern string\n", program_name);
+		goto CLEANUP;
+	} if (!pattern->len) {
+		fprintf(stderr, "%s: empty pattern string\n", program_name);
 		goto CLEANUP;
 	} else if (*h) {
-		fprintf(stderr, "%s: trailing garbage in search string: %s\n", program_name, quote(h));
+		fprintf(stderr, "%s: trailing garbage in pattern string: %s\n", program_name, quote(h));
 		goto CLEANUP;
 	}
 
