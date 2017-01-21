@@ -65,24 +65,6 @@ void die(int status, const char* msg, ...) {
 	exit(status);
 }
 
-
-int ascii2hex(char c) {
-	if (c < '0')
-		return -1;
-	else if (c <= '9')
-		return c - '0';
-	else if (c < 'A')
-		return -1;
-	else if (c <= 'F')
-		return c - 'A' + 10;
-	else if (c < 'a')
-		return -1;
-	else if (c <= 'f')
-		return c - 'a' + 10;
-	else
-		return -1;
-}
-
 off_t skip(int fd, off_t current, off_t n) {
 	off_t result = lseek(fd, n, SEEK_CUR);
 	if (result == (off_t)-1) {
@@ -338,95 +320,27 @@ int main(int argc, char **argv) {
 	argc -= optind - 1;
 
 	int result = 0;
-	struct byte_pattern pattern;
-	byte_pattern_init(&pattern);
+	struct byte_pattern *pattern =byte_pattern_from_string(argv[1]);
 
-	char *h = argv[1];
-	enum {MODE_HEX,MODE_TXT,MODE_TXT_ESC} parse_mode = MODE_HEX;
-
-	while (*h && (parse_mode != MODE_HEX || h[1]))
-	{
-		int on_quote = (h[0] == '"');
-		int on_esc = (h[0] == '\\');
-
-		switch (parse_mode)
-		{
-			case MODE_HEX:
-				if (on_quote)
-				{
-					parse_mode = MODE_TXT;
-					h++;
-					continue; /* works under switch - will continue the loop*/
-				}
-				break; /* this one is for switch */
-			case MODE_TXT:
-				if (on_quote)
-				{
-					parse_mode = MODE_HEX;
-					h++;
-					continue;
-				}
-
-				if (on_esc)
-				{
-					parse_mode = MODE_TXT_ESC;
-					h++;
-					continue;
-				}
-
-				byte_pattern_append_char(&pattern, h[0], 0xff);
-				h++;
-				continue;
-
-			case MODE_TXT_ESC:
-				byte_pattern_append_char(&pattern, h[0], 0xff);
-				parse_mode = MODE_TXT;
-				h++;
-				continue;
-		}
-		//
-		if (h[0] == '?' && h[1] == '?')
-		{
-			byte_pattern_append_char(&pattern, 0, 0);
-			h += 2;
-		} else if (h[0] == ' ')
-		{
-			h++;
-		} else
-		{
-			int v0 = ascii2hex(*h++);
-			int v1 = ascii2hex(*h++);
-
-			if ((v0 == -1) || (v1 == -1))
-			{
-				fprintf(stderr, "invalid hex string!\n");
-				result = 2;
-				goto CLEANUP;
-			}
-			byte_pattern_append_char(&pattern, (v0 << 4) | v1, 0xff);
-		}
-	}
-
-	if (!pattern.len || *h)
-	{
-		fprintf(stderr, "invalid/empty search string\n");
+	if (pattern == NULL) {
 		result = 2;
 		goto CLEANUP;
 	}
 
 	if (argc < 3)
-		result = searchfile("stdin", 0, &pattern);
+		result = searchfile("stdin", 0, pattern);
 	else
 	{
 		int c = 2;
 		while (c < argc) {
-			result += recurse(argv[c++], &pattern);
+			result += recurse(argv[c++], pattern);
 			if (result && params.first_only)
 				break;
 		}
 	}
 
 CLEANUP:
-	byte_pattern_free(&pattern);
+	byte_pattern_free(pattern);
 	return result == 0 ? 3 : 0;
 }
+

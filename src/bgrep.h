@@ -66,17 +66,14 @@ void die(int status, const char *msg, ...);
 
 /* byte_pattern.c */
 void byte_pattern_init(struct byte_pattern *ptr);
+void byte_pattern_destroy(struct byte_pattern *ptr);
 void byte_pattern_free(struct byte_pattern *ptr);
-/* Ensures byte_pattern can hold at least num_bytes. Calls xalloc_die on memory allocation failure. */
 void byte_pattern_reserve(struct byte_pattern *ptr, size_t num_bytes);
-/* Appends value/mask bytes to the pattern */
 void byte_pattern_append(struct byte_pattern *ptr, unsigned char *value, unsigned char *mask, size_t len);
-/* Appends one byte/mask to the pattern */
 void byte_pattern_append_char(struct byte_pattern *ptr, unsigned char value, unsigned char mask);
-/* Extends the pattern by (num_bytes*repeat) by duplicating the trailing num_bytes of the pattern. */
 void byte_pattern_repeat(struct byte_pattern *ptr, size_t num_bytes, size_t repeat);
-/* Returns a pointer to the first pattern match in the data, or NULL if none is found */
 const unsigned char * byte_pattern_match(const struct byte_pattern *ptr, const unsigned char *data, size_t len);
+struct byte_pattern *byte_pattern_from_string(const char *pattern_str);
 
 /* parse_integer.c */
 uintmax_t parse_integer(const char *str, strtol_error *invalid);
