@@ -53,8 +53,7 @@ struct bgrep_config params = { 0 };
 enum { INITIAL_BUFSIZE = 2048, MIN_REALLOC = 16 };
 
 
-void die(int status, const char* msg, ...)
-{
+void die(int status, const char* msg, ...) {
 	va_list ap;
 	va_start(ap, msg);
 
@@ -67,8 +66,7 @@ void die(int status, const char* msg, ...)
 }
 
 
-int ascii2hex(char c)
-{
+int ascii2hex(char c) {
 	if (c < '0')
 		return -1;
 	else if (c <= '9')
@@ -112,11 +110,10 @@ off_t skip(int fd, off_t current, off_t n) {
 }
 
 
-int searchfile(const char *filename, int fd, const unsigned char *value, const unsigned char *mask, size_t len)
-{
+int searchfile(const char *filename, int fd, const struct byte_pattern *pattern) {
 	int result = 0;
-	const size_t lenm1 = len-1;
-	const size_t search_size = MIN(INITIAL_BUFSIZE, 2*len);
+	const size_t lenm1 = pattern->len - 1;
+	const size_t search_size = MIN(INITIAL_BUFSIZE, 2 * pattern->len);
 	unsigned char *buf = xmalloc(params.bytes_before + search_size);
 	const unsigned char *endp = buf + search_size - lenm1;
 	unsigned char *readp = buf;
@@ -150,29 +147,21 @@ int searchfile(const char *filename, int fd, const unsigned char *value, const u
 	}
 
 	/* Read a byte at a time, matching as we go. */
-	while (1)
-	{
+	while (1) {
 		r = read(fd, readp+lenm1, 1);
-		if (r != 1)
-		{
+		if (r != 1) {
 			if (r < 0) perror("read");
 			result = -1;
 			break;
 		}
 
-		size_t i;
-		for (i = 0; i < len; ++i)
-		{
-			if ((readp[i] & mask[i]) != value[i])
-				break;
-		}
+		const unsigned char *match = byte_pattern_match(pattern, readp, pattern->len);
 
-		if (i == len)
-		{
+		if (match != 0)	{
 			size_t before = MIN(readp-buf, params.bytes_before);
 			print_before(readp-before, before, file_offset-before);
-			print_match(readp, len, file_offset);
-			print_after_fd(fd, file_offset+len);
+			print_match(match, pattern->len, file_offset);
+			print_after_fd(fd, file_offset + pattern->len);
 			if (params.first_only)
 				break;
 		}
@@ -181,8 +170,7 @@ int searchfile(const char *filename, int fd, const unsigned char *value, const u
 		++file_offset;
 
 		/* Shift the buffer every time we run out of space */
-		if (readp >= endp)
-		{
+		if (readp >= endp) {
 			size_t before = MIN(readp-buf, params.bytes_before);
 			memmove(buf, readp-before, lenm1+before);
 			readp = buf+before;
@@ -195,8 +183,7 @@ CLEANUP:
 	return result;
 }
 
-int recurse(const char *path, const unsigned char *value, const unsigned char *mask, int len)
-{
+int recurse(const char *path, struct byte_pattern *pattern) {
 	int result = 0;
 	struct stat s;
 	if (stat(path, &s))
@@ -211,7 +198,7 @@ int recurse(const char *path, const unsigned char *value, const unsigned char *m
 			perror(path);
 		else
 		{
-			result = searchfile(path, fd, value, mask, len);
+			result = searchfile(path, fd, pattern);
 			close(fd);
 		}
 		return result;
@@ -236,7 +223,7 @@ int recurse(const char *path, const unsigned char *value, const unsigned char *m
 			strcpy(newpath, path);
 			strcat(newpath, "/");
 			strcat(newpath, d->d_name);
-			result += recurse(newpath, value, mask, len);
+			result += recurse(newpath, pattern);
 			if (result && params.first_only)
 				break;
 		}
@@ -247,8 +234,7 @@ int recurse(const char *path, const unsigned char *value, const unsigned char *m
 }
 
 /* NOTE: -A, -B, and -C disabled (for now) */
-void usage(int full)
-{
+void usage(int full) {
 	fprintf(stderr, "bgrep version: %s\n", BGREP_VERSION);
 	fprintf(stderr,
 		"usage: %s [-hFHbclr] [-s BYTES] [-B BYTES] [-A BYTES] [-C BYTES] <hex> [<path> [...]]\n\n",
@@ -282,8 +268,7 @@ void usage(int full)
 	exit(1);
 }
 
-void parse_opts(int argc, char** argv)
-{
+void parse_opts(int argc, char** argv) {
 	int c;
 	strtol_error invalid = LONGINT_OK;
 
@@ -339,10 +324,8 @@ void parse_opts(int argc, char** argv)
 	}
 }
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
 	set_program_name(*argv);
-
 	parse_opts(argc, argv);
 
 	if ((argc-optind) < 1)
@@ -432,12 +415,12 @@ int main(int argc, char **argv)
 	}
 
 	if (argc < 3)
-		result = searchfile("stdin", 0, pattern.value, pattern.mask, pattern.len);
+		result = searchfile("stdin", 0, &pattern);
 	else
 	{
 		int c = 2;
 		while (c < argc) {
-			result += recurse(argv[c++], pattern.value, pattern.mask, pattern.len);
+			result += recurse(argv[c++], &pattern);
 			if (result && params.first_only)
 				break;
 		}

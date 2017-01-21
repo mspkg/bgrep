@@ -3,17 +3,19 @@
 #undef HEX_DIGIT
 #define HEX_DIGIT(n) (hexx[(n)&0xf])
 
+enum { INITIAL_BUFSIZE = 2048, XXD_MAX_COUNT = 16 };
+static const char hexx[] = "0123456789abcdef";
+
+/* State parameters while processing a single file */
 static const char *filename;
 static off_t last_offset = 0;
 static unsigned long match_count = 0;
 static unsigned int xxd_count = 0;
 static char human_text[17];
 
-enum { INITIAL_BUFSIZE = 2048, XXD_MAX_COUNT = 16 };
-static const char hexx[] = "0123456789abcdef";
-
-static inline void print_char(unsigned char c);
+static void print_xxd(const char *match, size_t len, off_t file_offset);
 static inline void endline_xxd();
+
 
 void begin_match(const char *fname) {
 	filename = fname;
@@ -29,6 +31,7 @@ void print_before(const char *buf, size_t len, off_t file_offset) {
 		print_xxd(buf, len, file_offset);
 	}
 }
+
 
 void print_match(const char *match, size_t len, off_t file_offset) {
 	switch (params.print_mode) {
@@ -83,9 +86,7 @@ void flush_match() {
 }
 
 
-/* 
- * Not intended for use on file descriptors that cannot seek backward (e.g. pipes or stdin).
- */
+/* Not intended for use on file descriptors that cannot seek backward (e.g. pipes or stdin). */
 void print_after_fd(int fd, off_t file_offset)
 {
 	if (params.print_mode != XXD_DUMP || params.bytes_after == 0) {
@@ -126,7 +127,7 @@ void print_after_fd(int fd, off_t file_offset)
 }
 
 
-void print_xxd(const char *match, size_t len, off_t file_offset) {
+static void print_xxd(const char *match, size_t len, off_t file_offset) {
 	const char *endp = match+len;
 
 	if (file_offset < last_offset) {

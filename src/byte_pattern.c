@@ -67,3 +67,22 @@ void byte_pattern_repeat(struct byte_pattern *ptr, size_t num_bytes, size_t repe
 	free(mask);
 }
 
+/* Returns a pointer to the first pattern match in the data, or NULL if none is found */
+const unsigned char * byte_pattern_match(const struct byte_pattern *ptr, const unsigned char *data, size_t len) {
+	const unsigned char * result = (ptr->len == 0) ? data : NULL;
+
+	if (len >= ptr->len) {
+		const unsigned char *endp = data + len - ptr->len;
+		for (;result == NULL && data <= endp; ++data) {
+			size_t i = 0;
+			for (; i < ptr->len; ++i) {
+				if ((data[i] & ptr->mask[i]) != ptr->value[i])
+					break;
+			}
+			result = (i == ptr->len) ? endp : NULL;
+		}
+	}
+
+	return result;
+}
+
