@@ -69,10 +69,10 @@ $ echo "1234foo89abfoof0123" | bgrep \"foo\"
 $ echo "1234foo89abfoof0123" | bgrep \"foo\" | xxd -r -c3 ; echo
 foofoo
 ```
-> ### Notes on the limitations of `xxd`
-> `xxd` inserts (zero-valued) padding bytes whenever it sees a discontinuity on its input. It also believes every line of
+> ### *Note:* Limitations of `xxd`
+> `xxd -r` inserts (zero-valued) padding bytes whenever it sees a discontinuity on its input. It also believes every line of
 > input contains its configured number of bytes (16 by default).  If you give it two lines of data that "overlap", it will
-> try to seek backward in the output file.
+> try to seek backward in the output file.  Pipes, standard input, and some devices do not support backward seek.
 ```
 $ echo "1234foo89abfoof0123" | bgrep \"foo\" | xxd -r | xxd
 xxd: sorry, cannot seek backwards.
