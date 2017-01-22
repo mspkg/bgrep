@@ -298,18 +298,19 @@ struct byte_pattern *byte_pattern_from_string(const char *pattern_str) {
 	}
 
 	if (parse_mode == MODE_TXT) {
-		fprintf(stderr, "%s: missing closing `\"' in pattern string\n", program_name);
+		fprintf(stderr, "%s: unmatched %s in pattern string\n", program_name, quote("\""));
 		goto CLEANUP;
 	} else if (parse_mode == MODE_TXT_ESC) {
-		fprintf(stderr, "%s: missing character after escape ('\\') in pattern string\n", program_name);
+		fprintf(stderr, "%s: missing character after escape (%s) in pattern string\n", program_name, quote("\\"));
 		goto CLEANUP;
 	} else if (groupstack_top > 1 || (groupstack_top == 1 && parse_mode != MODE_WAITING_GROUP_MULT)) {
-		fprintf(stderr, "%s: group with no ')' in pattern string\n", program_name);
+		fprintf(stderr, "%s: unmatched %s in pattern string\n", program_name, quote("("));
 		goto CLEANUP;
 	} else if (!pattern->len) {
-		fprintf(stderr, "%s: empty pattern string\n", program_name);
+		fprintf(stderr, "%s: empty pattern string -- use %s to match all bytes\n", program_name, quote("?\?"));
 		goto CLEANUP;
 	} else if (*h) {
+		// should be unreachable, but just in case
 		fprintf(stderr, "%s: trailing garbage in pattern string: %s\n", program_name, quote(h));
 		goto CLEANUP;
 	}
