@@ -57,44 +57,50 @@ static error_t parse_opt (int key, char *optarg, struct argp_state *state);
 
 const char *argp_program_version = PACKAGE_STRING;
 const char *argp_program_bug_address = "https://github.com/rsharo/bgrep/issues";
-static const char doc[] =	" PATTERN may consist of the following elements:\n"
-				"    hex byte values:                '666f6f 62 61 72'\n"
-				"    quoted strings:                 '\"foobar\"'\n"
-				"    wildcard bytes:                 '\"header\" ?? \"trailer\"'\n"
-				"    repeated bytes/strings/groups:  '66*1k \"foo\"*3 (666f6f) * 7M'\n"
-				"    escaped quotes in strings:      '\"\\\"quoted\\\"\"'\n"
-				"    any combinations thereof:       '((\"foo\"*3 ?\?)*1k ff \"bar\") * 2'\n"
-				"\n"
-				" More examples:\n"
-				"    'ffeedd??cc'        Matches bytes 0xff, 0xee, 0xff, <any>, 0xcc\n"
-				"    '\"foo\"'             Matches bytes 0x66, 0x6f, 0x6f\n"
-				"    '\"foo\"00\"bar\"'      Matches \"foo\", a null character, then \"bar\"\n"
-				"    '\"foo\"??\"bar\"'      Matches \"foo\", then any byte, then \"bar\"\n"
-				"\n"
-				" SKIP, BEFORE, AFTER, CONTEXT, and REPEAT may be followed by the following\n"
-				" multiplicative suffixes:\n"
-				"   c =1, w =2, b =512, kB =1000, K =1024, MB =1000*1000, M =1024*1024, xM =M\n"
-				"   GB =1000*1000*1000, G =1024*1024*1024, and so on for T, P, E, Z, Y.\n"
-				"\n";
+
+/* The escaped question marks are to prevent trigraph warnings */
+static const char doc[] = "Search for a byte PATTERN in each FILE or standard input"
+	"\v"
+	" PATTERN may consist of the following elements:\n"
+	"    hex byte values:                '666f6f 62 61 72'\n"
+	"    quoted strings:                 '\"foobar\"'\n"
+	"    wildcard bytes:                 '?\?'\n"
+	"    groupings:                      '(66 6f 6f)'\n"
+	"    repeated bytes/strings/groups:  '(666f6f)*3'\n"
+	"    escaped quotes in strings:      '\"\\\"quoted\\\"\"'\n"
+	"    any combinations thereof:       '((\"foo\"*3 ?\?)*1k ff \"bar\") * 2'\n"
+	"\n"
+	" More examples:\n"
+	"    'ffeedd??cc'            Matches bytes 0xff, 0xee, 0xdd, <any byte>, 0xcc\n"
+	"    '\"foo\"'                 Matches bytes 0x66, 0x6f, 0x6f\n"
+	"    '\"foo\"00\"bar\"'          Matches \"foo\", a null character, then \"bar\"\n"
+	"    '\"foo\"??\"bar\"'          Matches \"foo\", then any byte, then \"bar\"\n"
+	"    '\"foo\"??*10\"bar\"'       Matches \"foo\", then exactly 10 bytes, then \"bar\"\n"
+	"\n"
+	" BYTES and REPEAT may be followed by the following multiplicative suffixes:\n"
+	"   c =1, w =2, b =512, kB =1000, K =1024, MB =1000*1000, M =1024*1024, xM =M\n"
+	"   GB =1000*1000*1000, G =1024*1024*1024, and so on for T, P, E, Z, Y.\n"
+	"\n"
+	" FILE can be a path to a file or '-', which means 'standard input'";
 
 static struct argp_option const options[] = {
-	{ "first-only",         'F', 0, 0, "stop searching after the first match", 0 },
-	{ "with-filename",      'H', 0, 0, "show filenames when reporting matches", 0 },
-	{ "byte-offset",        'b', 0, 0, "show byte offsets. Disables xxd output mode.", 0 },
-	{ "count",              'c', 0, 0, "print a match count for each file. Disables xxd output mode.", 0 },
-	{ "files-with-matches", 'l', 0, 0, "print the names of files containing matches. Implies 'first-only'. Disables xxd output mode.", 0 },
-	{ "quiet",              'q', 0, 0, "do not print output. Produce return code only. Implies 'first only'.", 0},
-	{ "recursive",          'r', 0, 0, "descend recursively into directories", 0},
-	{ "skip",               's', "SKIP",     0, "skip or seek SKIP bytes forward before searching", 0 },
-	{ "before-context",     'B', "BEFORE",   0, "print BEFORE bytes of context before each match if possible (xxd output mode only)", 0 },
-	{ "after-context",      'A', "AFTER",    0, "print AFTER bytes of context after each match if possible (xxd output mode only)", 0 },
-	{ "context",            'C', "CONTEXT",  0, "print CONTEXT bytes of context before and after each match if possible (xxd output mode only)", 0 },
-	{ "hex-pattern",        'x', "PATTERN",  0, "the PATTERN to match", 0 },
-	{ 0,                      0, 0, OPTION_DOC, doc, 1},
+	{ "first-only",         'F', 0, 0, "stop searching after the first match in each file", 2 },
+	{ "with-filename",      'H', 0, 0, "show filenames when reporting matches", 2 },
+	{ "byte-offset",        'b', 0, 0, "show byte offsets; disables xxd output mode", 1 },
+	{ "count",              'c', 0, 0, "print a match count for each file; disables xxd output mode", 1 },
+	{ "files-with-matches", 'l', 0, 0, "print the names of files containing matches; implies 'first-only'; disables xxd output mode", 1 },
+	{ "quiet",              'q', 0, 0, "suppress all normal output; implies 'first-only'", 1},
+	{ "recursive",          'r', 0, 0, "descend recursively into directories", 2},
+	{ "skip",               's', "BYTES",   0, "skip or seek BYTES forward before searching", 4 },
+	{ "before-context",     'B', "BYTES",   0, "print BYTES of context before each match if possible (xxd output mode only)", 3 },
+	{ "after-context",      'A', "BYTES",   0, "print BYTES of context after each match if possible (xxd output mode only)", 3 },
+	{ "context",            'C', "BYTES",   0, "print BYTES of context before and after each match if possible (xxd output mode only)", 3 },
+	{ "hex-pattern",        'x', "PATTERN", 0, "use PATTERN for matching", 4 },
+//	{ 0,                      0, 0, OPTION_DOC, patterndoc, -1},
 	{ 0,                      0, 0,          0, 0, 0}
 };
 
-static struct argp argp = { options, parse_opt, "PATTERN [FILE...]", 0 };
+static struct argp argp = { options, parse_opt, "PATTERN [FILE...]\n--hex-pattern=PATTERN [FILE...]", doc };
 static const char * const dash = "-";
 
 
