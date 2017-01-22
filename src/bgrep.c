@@ -215,7 +215,6 @@ int recurse(const char *path, struct byte_pattern *pattern) {
 	return result;
 }
 
-/* NOTE: -A, -B, and -C disabled (for now) */
 void usage(int full) {
 	fprintf(stderr, "bgrep version: %s\n", BGREP_VERSION);
 	fprintf(stderr,
