@@ -8,12 +8,13 @@ test/data
 autom4te.cache
 config.log
 config.status
-Makefile
 src/Makefile
 lib/Makefile
 test/Makefile
 config.h
 stamp-h1
+**/Makefile
+**/Makefile.in
 **/.deps
 **/*.o
 **/*.log
