@@ -6,12 +6,13 @@ strings. I'm even more annoyed by the fact that a simple search for
 **Original work by [tmbinc/bgrep](https://github.com/tmbinc/bgrep)**
 
 Feel free to modify, branch, fork, improve. Re-licenses as BSD.
-# `bgrep` "manpage"
+# "Man" page
 
 ```
 $ bgrep --help
 Usage: bgrep [OPTION...] PATTERN [FILE...]
   or:  bgrep [OPTION...] --hex-pattern=PATTERN [FILE...]
+  or:  bgrep [OPTION...] -x PATTERN [FILE...]
 Search for a byte PATTERN in each FILE or standard input
 
   -b, --byte-offset          show byte offsets; disables xxd output mode
@@ -59,6 +60,8 @@ for any corresponding short options.
    GB =1000*1000*1000, G =1024*1024*1024, and so on for T, P, E, Z, Y.
 
  FILE can be a path to a file or '-', which means 'standard input'
+
+Report bugs to <https://github.com/rsharo/bgrep/issues>.
 ```
 # Build Instructions
 First, you need to have [make](https://www.gnu.org/software/make/manual/make.html), [gcc](https://gcc.gnu.org/), [automake](https://www.gnu.org/software/automake/), and [gnulib](https://www.gnu.org/software/gnulib/) installed.

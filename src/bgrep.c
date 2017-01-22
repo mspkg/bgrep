@@ -56,7 +56,7 @@ enum { RESULT_MATCH = 0, RESULT_NO_MATCH = 1, RESULT_ERROR = 2};
 static error_t parse_opt (int key, char *optarg, struct argp_state *state);
 
 const char *argp_program_version = PACKAGE_STRING;
-const char *argp_program_bug_address = "https://github.com/rsharo/bgrep/issues";
+const char *argp_program_bug_address = "<https://github.com/rsharo/bgrep/issues>";
 
 /* The escaped question marks are to prevent trigraph warnings */
 static const char doc[] = "Search for a byte PATTERN in each FILE or standard input"
@@ -83,6 +83,11 @@ static const char doc[] = "Search for a byte PATTERN in each FILE or standard in
 	"\n"
 	" FILE can be a path to a file or '-', which means 'standard input'";
 
+static const char args_doc[] =
+	"PATTERN [FILE...]\n"
+	"--hex-pattern=PATTERN [FILE...]\n"
+	"-x PATTERN [FILE...]";
+
 static struct argp_option const options[] = {
 	{ "first-only",         'F', 0, 0, "stop searching after the first match in each file", 2 },
 	{ "with-filename",      'H', 0, 0, "show filenames when reporting matches", 2 },
@@ -91,17 +96,16 @@ static struct argp_option const options[] = {
 	{ "files-with-matches", 'l', 0, 0, "print the names of files containing matches; implies 'first-only'; disables xxd output mode", 1 },
 	{ "quiet",              'q', 0, 0, "suppress all normal output; implies 'first-only'", 1},
 	{ "recursive",          'r', 0, 0, "descend recursively into directories", 2},
-	{ "skip",               's', "BYTES",   0, "skip or seek BYTES forward before searching", 4 },
-	{ "before-context",     'B', "BYTES",   0, "print BYTES of context before each match if possible (xxd output mode only)", 3 },
-	{ "after-context",      'A', "BYTES",   0, "print BYTES of context after each match if possible (xxd output mode only)", 3 },
-	{ "context",            'C', "BYTES",   0, "print BYTES of context before and after each match if possible (xxd output mode only)", 3 },
-	{ "hex-pattern",        'x', "PATTERN", 0, "use PATTERN for matching", 4 },
-//	{ 0,                      0, 0, OPTION_DOC, patterndoc, -1},
-	{ 0,                      0, 0,          0, 0, 0}
+	{ "skip",               's', "BYTES", 0, "skip or seek BYTES forward before searching", 4 },
+	{ "before-context",     'B', "BYTES", 0, "print BYTES of context before each match if possible (xxd output mode only)", 3 },
+	{ "after-context",      'A', "BYTES", 0, "print BYTES of context after each match if possible (xxd output mode only)", 3 },
+	{ "context",            'C', "BYTES", 0, "print BYTES of context before and after each match if possible (xxd output mode only)", 3 },
+	{ "hex-pattern",        'x', "PATTERN", OPTION_NO_USAGE, "use PATTERN for matching", 4 },
+	{ 0, 0, 0, 0, 0, 0}
 };
 
-static struct argp argp = { options, parse_opt, "PATTERN [FILE...]\n--hex-pattern=PATTERN [FILE...]", doc };
-static const char * const dash = "-";
+static struct argp argp = { options, parse_opt, args_doc, doc };
+static const char const *STD_IN_FILENAME = "-";
 
 
 void die(int status, const char* msg, ...) {
@@ -181,7 +185,7 @@ parse_opt (int key, char *arg, struct argp_state *state) {
 					--first_file;
 				}
 				if (first_file == state->argc) {
-					config->filenames = &dash;
+					config->filenames = &STD_IN_FILENAME;
 					config->filename_count = 1;
 				} else {
 					config->filenames = (const char **)(state->argv + first_file);
@@ -194,7 +198,7 @@ parse_opt (int key, char *arg, struct argp_state *state) {
 				if (config->pattern == NULL) {
 					argp_usage(state);
 				}
-				config->filenames = &dash;
+				config->filenames = &STD_IN_FILENAME;
 				config->filename_count = 1;
 				break;
 			case ARGP_KEY_END:
@@ -316,7 +320,7 @@ CLEANUP:
 
 
 int recurse(const char *path, struct byte_pattern *pattern) {
-	if (!strcmp(path, "-")) {
+	if (!strcmp(path, STD_IN_FILENAME)) {
 		return searchfile("stdin", 0, pattern);
 	}
 
