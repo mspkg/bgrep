@@ -323,7 +323,7 @@ int recurse(const char *path, struct byte_pattern *pattern) {
 	int result = RESULT_NO_MATCH;
 	struct stat s;
 	if (stat(path, &s)) {
-		perror("stat");
+		perror(path);
 		return RESULT_ERROR;
 	}
 
