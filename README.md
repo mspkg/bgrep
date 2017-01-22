@@ -72,10 +72,10 @@ Once you have those tools, it is the normal autotools build process.
 ./bootstrap
 ./configure
 make
-make check
 ```
 And optionally:
-```
+```bash
+make check
 sudo make install
 ```
 
