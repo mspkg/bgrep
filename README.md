@@ -67,19 +67,19 @@ On Debian and derivatives:
 sudo apt-get install build-essential gnulib
 ```
 
-Once you have those tools, it is the normal autotools build process.
+Once you have those tools, it is the normal autotools build process:
 ```bash
 ./bootstrap
 ./configure
 make
 ```
-And optionally:
+The binary goes to `src/bgrep`
+
+Optional build steps:
 ```bash
 make check
 sudo make install
 ```
-
-
 
 # Examples
 ### Basic (xxd-style) usage
