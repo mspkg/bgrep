@@ -13,8 +13,6 @@
 /* gnulib dependencies */
 #include "xstrtol.h"
 
-#define BGREP_VERSION VERSION
-
 #ifndef STRPREFIX
 #  define STRPREFIX(a, b) (strncmp (a, b, strlen (b)) == 0)
 #endif /* STRPREFIX */
