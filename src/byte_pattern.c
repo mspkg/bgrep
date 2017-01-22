@@ -297,16 +297,35 @@ struct byte_pattern *byte_pattern_from_string(const char *pattern_str) {
 		}
 	}
 
-	if (parse_mode == MODE_TXT) {
-		fprintf(stderr, "%s: unmatched %s in pattern string\n", program_name, quote("\""));
-		goto CLEANUP;
-	} else if (parse_mode == MODE_TXT_ESC) {
-		fprintf(stderr, "%s: missing character after escape (%s) in pattern string\n", program_name, quote("\\"));
-		goto CLEANUP;
-	} else if (groupstack_top > 1 || (groupstack_top == 1 && parse_mode != MODE_WAITING_GROUP_MULT)) {
-		fprintf(stderr, "%s: unmatched %s in pattern string\n", program_name, quote("("));
-		goto CLEANUP;
-	} else if (!pattern->len) {
+	// We come out in MODE_HEX or MODE_WAITING_GROUP_MULT if the pattern is valid
+	switch (parse_mode) {
+		case MODE_TXT:
+			fprintf(stderr, "%s: unmatched %s in pattern string\n", program_name, quote("\""));
+			goto CLEANUP;
+		case MODE_TXT_ESC:
+			fprintf(stderr, "%s: missing character after escape symbol %s in pattern string\n", program_name, quote("\\"));
+			goto CLEANUP;
+		case MODE_MULTIPLY:
+			fprintf(stderr, "%s: REPEAT value missing after repeat symbol %s in pattern string\n", program_name, quote("*"));
+			goto CLEANUP;
+		case MODE_WAITING_GROUP_MULT:
+			if (groupstack_top > 1) {
+				fprintf(stderr, "%s: unmatched %s in pattern string\n", program_name, quote("("));
+				goto CLEANUP;
+			}
+			break;
+		case MODE_HEX:
+			if (groupstack_top > 0) {
+				fprintf(stderr, "%s: unmatched %s in pattern string\n", program_name, quote("("));
+				goto CLEANUP;
+			}
+			break;
+		default:
+			fprintf(stderr, "%s: unexpected pattern parse mode: %d\n", program_name, parse_mode);
+			goto CLEANUP;
+	}
+
+	if (!pattern->len) {
 		fprintf(stderr, "%s: empty pattern string -- use %s to match all bytes\n", program_name, quote("?\?"));
 		goto CLEANUP;
 	} else if (*h) {
