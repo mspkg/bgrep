@@ -36,9 +36,10 @@
 
 enum bgrep_print_modes {
 	XXD_DUMP = 0,
-	COUNT_MATCHES=1,
-	OFFSETS=2,
-	LIST_FILENAMES=3
+	COUNT_MATCHES = 1,
+	OFFSETS = 2,
+	LIST_FILENAMES = 3,
+	QUIET = 4
 };
 
 /* Config parameters */
@@ -50,6 +51,9 @@ struct bgrep_config {
 	int print_filenames;
 	int recurse;
 	enum bgrep_print_modes print_mode;
+	struct byte_pattern *pattern;
+	const char * const *filenames;
+	int filename_count;
 };
 
 struct byte_pattern {

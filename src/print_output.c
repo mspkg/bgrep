@@ -35,6 +35,7 @@ void print_before(const char *buf, size_t len, off_t file_offset) {
 
 void print_match(const char *match, size_t len, off_t file_offset) {
 	switch (params.print_mode) {
+		case QUIET:
 		case COUNT_MATCHES:
 		case LIST_FILENAMES:
 			/* Do nothing now.  Results print in flush_match(). */
@@ -73,6 +74,7 @@ void flush_match() {
 			}
 			break;
 
+		case QUIET:
 		case OFFSETS:
 			break;
 

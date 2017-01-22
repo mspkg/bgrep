@@ -28,42 +28,52 @@ sudo make install
 ## `bgrep` "manpage"
 
 ```
-$ bgrep -h
-bgrep version: 0.3
-usage: bgrep [-hFHbclr] [-s BYTES] [-B BYTES] [-A BYTES] [-C BYTES] <hex> [<path> [...]]
+$ bgrep --help
+Usage: bgrep [OPTION...] PATTERN [FILE...]
 
-   -h         Print this help
-   -F         Stop scanning after the first match
-   -H         Print the file name for each match
-   -b         Print the byte offset of each match INSTEAD of xxd-style output
-   -c         Print a match count for each file (disables offset/context printing)
-   -l         Suppress normal output; instead print the name of each input file from
-              which output would normally have been printed. Implies -F
-   -r         Recurse into directories
-   -s BYTES   Skip forward by BYTES before searching
-   -B BYTES   Print BYTES of context before the match (xxd output only)
-   -A BYTES   Print BYTES of context after the match (xxd output only)
-   -C BYTES   Print BYTES of context before AND after the match (xxd output only)
+  -A, --after-context=AFTER  print AFTER bytes of context after each match if
+                             possible (xxd output mode only)
+  -b, --byte-offset          show byte offsets. Disables xxd output mode.
+  -B, --before-context=BEFORE   print BEFORE bytes of context before each match
+                             if possible (xxd output mode only)
+  -c, --count                print a match count for each file. Disables xxd
+                             output mode.
+  -C, --context=CONTEXT      print CONTEXT bytes of context before and after
+                             each match if possible (xxd output mode only)
+  -F, --first-only           stop searching after the first match
+  -H, --with-filename        show filenames when reporting matches
+  -l, --files-with-matches   print the names of files containing matches.
+                             Implies 'first-only'. Disables xxd output mode.
+  -q, --quiet                do not print output. Produce return code only.
+                             Implies 'first only'.
+  -r, --recursive            descend recursively into directories
+  -s, --skip=SKIP            skip or seek SKIP bytes forward before searching
+  -x, --hex-pattern=PATTERN  the PATTERN to match
 
-      <hex> may consist of the following elements:
-         hex byte values:                '666f6f 62 61 72'
-         quoted strings:                 '"foobar"'
-         wildcard bytes:                 '"header" ?? "trailer"'
-         repeated bytes/strings/groups:  '66*1k "foo"*3 (666f6f) * 7M'
-         escaped quotes in strings:      '"\"quoted\""'
-         any combinations thereof:       '(("foo"*3 ??)*1k ff "bar") * 2'
+  PATTERN may consist of the following elements:
+     hex byte values:                '666f6f 62 61 72'
+     quoted strings:                 '"foobar"'
+     wildcard bytes:                 '"header" ?? "trailer"'
+     repeated bytes/strings/groups:  '66*1k "foo"*3 (666f6f) * 7M'
+     escaped quotes in strings:      '"\"quoted\""'
+     any combinations thereof:       '(("foo"*3 ??)*1k ff "bar") * 2'
+ 
+  More examples:
+     'ffeedd??cc'        Matches bytes 0xff, 0xee, 0xff, <any>, 0xcc
+     '"foo"'             Matches bytes 0x66, 0x6f, 0x6f
+     '"foo"00"bar"'      Matches "foo", a null character, then "bar"
+     '"foo"??"bar"'      Matches "foo", then any byte, then "bar"
+ 
+  SKIP, BEFORE, AFTER, CONTEXT, and REPEAT may be followed by the following
+  multiplicative suffixes:
+    c =1, w =2, b =512, kB =1000, K =1024, MB =1000*1000, M =1024*1024, xM =M
+    GB =1000*1000*1000, G =1024*1024*1024, and so on for T, P, E, Z, Y.
+ 
 
-      More examples:
-         'ffeedd??cc'        Matches bytes 0xff, 0xee, 0xff, <any>, 0xcc
-         '"foo"'             Matches bytes 0x66, 0x6f, 0x6f
-         '"foo"00"bar"'      Matches "foo", a null character, then "bar"
-         '"foo"??"bar"'      Matches "foo", then any byte, then "bar"
 
-      BYTES and REPEATS may be followed by the following multiplicative suffixes:
-         c =1, w =2, b =512, kB =1000, K =1024, MB =1000*1000, M =1024*1024, xM =M
-         GB =1000*1000*1000, G =1024*1024*1024, and so on for T, P, E, Z, Y.
-
-      This program was compiled to support a maximum of 64 nested repeat groups.
+  -?, --help                 give this help list
+      --usage                give a short usage message
+  -V, --version              print program version
 ```
 
 ## Examples
