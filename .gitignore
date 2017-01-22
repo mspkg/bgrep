@@ -1,5 +1,5 @@
 # The program binary
-**/bgrep
+src/bgrep
 
 # test artifact
 test/data
@@ -19,23 +19,15 @@ stamp-h1
 **/*.log
 **/*.trs
 
-# The following are built by gnulib
-lib/arg-nonnull.h
-lib/c++defs.h
-lib/charset.alias
-lib/configmake.h
-lib/inttypes.h
-lib/libgnu.a
-lib/ref-add.sed
-lib/ref-del.sed
-lib/stdio.h
-lib/stdlib.h
-lib/string.h
-lib/sys/
-lib/unistd.h
-lib/warn-on-use.h
-lib/wchar.h
-lib/wctype.h
+# artifacts of gnulib bootstrap
+/build-aux
+/gnulib
+/lib
+/m4
+INSTALL
+aclocal.m4
+config.h.in
+configure
 
 # Other temporary files
 **/*.swp

@@ -80,23 +80,27 @@ host_triplet = @host@
 bin_PROGRAMS = bgrep$(EXEEXT)
 subdir = src
 DIST_COMMON = $(srcdir)/Makefile.in $(srcdir)/Makefile.am \
-	$(top_srcdir)/depcomp
+	$(top_srcdir)/build-aux/depcomp
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/00gnulib.m4 \
 	$(top_srcdir)/m4/absolute-header.m4 \
 	$(top_srcdir)/m4/codeset.m4 $(top_srcdir)/m4/configmake.m4 \
+	$(top_srcdir)/m4/dirname.m4 \
+	$(top_srcdir)/m4/double-slash-root.m4 \
 	$(top_srcdir)/m4/errno_h.m4 $(top_srcdir)/m4/error.m4 \
 	$(top_srcdir)/m4/extensions.m4 \
 	$(top_srcdir)/m4/extern-inline.m4 $(top_srcdir)/m4/fcntl-o.m4 \
-	$(top_srcdir)/m4/getopt.m4 $(top_srcdir)/m4/glibc21.m4 \
-	$(top_srcdir)/m4/gnulib-common.m4 \
+	$(top_srcdir)/m4/getopt.m4 $(top_srcdir)/m4/getprogname.m4 \
+	$(top_srcdir)/m4/glibc21.m4 $(top_srcdir)/m4/gnulib-common.m4 \
 	$(top_srcdir)/m4/gnulib-comp.m4 \
+	$(top_srcdir)/m4/hard-locale.m4 \
 	$(top_srcdir)/m4/include_next.m4 $(top_srcdir)/m4/inttypes.m4 \
-	$(top_srcdir)/m4/localcharset.m4 $(top_srcdir)/m4/locale-fr.m4 \
-	$(top_srcdir)/m4/locale-ja.m4 $(top_srcdir)/m4/locale-zh.m4 \
-	$(top_srcdir)/m4/longlong.m4 $(top_srcdir)/m4/mbrtowc.m4 \
+	$(top_srcdir)/m4/limits-h.m4 $(top_srcdir)/m4/localcharset.m4 \
+	$(top_srcdir)/m4/locale-fr.m4 $(top_srcdir)/m4/locale-ja.m4 \
+	$(top_srcdir)/m4/locale-zh.m4 $(top_srcdir)/m4/longlong.m4 \
+	$(top_srcdir)/m4/malloc.m4 $(top_srcdir)/m4/mbrtowc.m4 \
 	$(top_srcdir)/m4/mbsinit.m4 $(top_srcdir)/m4/mbstate_t.m4 \
-	$(top_srcdir)/m4/msvc-inval.m4 \
+	$(top_srcdir)/m4/minmax.m4 $(top_srcdir)/m4/msvc-inval.m4 \
 	$(top_srcdir)/m4/msvc-nothrow.m4 $(top_srcdir)/m4/multiarch.m4 \
 	$(top_srcdir)/m4/nocrash.m4 $(top_srcdir)/m4/off_t.m4 \
 	$(top_srcdir)/m4/onceonly.m4 $(top_srcdir)/m4/quote.m4 \
@@ -123,7 +127,8 @@ am_bgrep_OBJECTS = bgrep.$(OBJEXT) parse_integer.$(OBJEXT) \
 	print_output.$(OBJEXT) byte_pattern.$(OBJEXT)
 bgrep_OBJECTS = $(am_bgrep_OBJECTS)
 am__DEPENDENCIES_1 =
-bgrep_DEPENDENCIES = $(top_srcdir)/lib/libgnu.a $(am__DEPENDENCIES_1)
+bgrep_DEPENDENCIES = $(top_srcdir)/lib/libbgrep.a \
+	$(am__DEPENDENCIES_1)
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
 am__v_P_0 = false
@@ -137,7 +142,7 @@ am__v_at_ = $(am__v_at_@AM_DEFAULT_V@)
 am__v_at_0 = @
 am__v_at_1 = 
 DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)
-depcomp = $(SHELL) $(top_srcdir)/depcomp
+depcomp = $(SHELL) $(top_srcdir)/build-aux/depcomp
 am__depfiles_maybe = depfiles
 am__mv = mv -f
 COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
@@ -316,6 +321,7 @@ GNULIB_MKSTEMP = @GNULIB_MKSTEMP@
 GNULIB_MKSTEMPS = @GNULIB_MKSTEMPS@
 GNULIB_OBSTACK_PRINTF = @GNULIB_OBSTACK_PRINTF@
 GNULIB_OBSTACK_PRINTF_POSIX = @GNULIB_OBSTACK_PRINTF_POSIX@
+GNULIB_OVERRIDES_WINT_T = @GNULIB_OVERRIDES_WINT_T@
 GNULIB_PCLOSE = @GNULIB_PCLOSE@
 GNULIB_PERROR = @GNULIB_PERROR@
 GNULIB_PIPE = @GNULIB_PIPE@
@@ -332,6 +338,7 @@ GNULIB_PUTCHAR = @GNULIB_PUTCHAR@
 GNULIB_PUTENV = @GNULIB_PUTENV@
 GNULIB_PUTS = @GNULIB_PUTS@
 GNULIB_PWRITE = @GNULIB_PWRITE@
+GNULIB_QSORT_R = @GNULIB_QSORT_R@
 GNULIB_RANDOM = @GNULIB_RANDOM@
 GNULIB_RANDOM_R = @GNULIB_RANDOM_R@
 GNULIB_RAWMEMCHR = @GNULIB_RAWMEMCHR@
@@ -439,6 +446,7 @@ GNULIB__EXIT = @GNULIB__EXIT@
 GREP = @GREP@
 HAVE_ATOLL = @HAVE_ATOLL@
 HAVE_BTOWC = @HAVE_BTOWC@
+HAVE_C99_STDINT_H = @HAVE_C99_STDINT_H@
 HAVE_CANONICALIZE_FILE_NAME = @HAVE_CANONICALIZE_FILE_NAME@
 HAVE_CHOWN = @HAVE_CHOWN@
 HAVE_DECL_ENVIRON = @HAVE_DECL_ENVIRON@
@@ -451,6 +459,7 @@ HAVE_DECL_GETDELIM = @HAVE_DECL_GETDELIM@
 HAVE_DECL_GETDOMAINNAME = @HAVE_DECL_GETDOMAINNAME@
 HAVE_DECL_GETLINE = @HAVE_DECL_GETLINE@
 HAVE_DECL_GETLOADAVG = @HAVE_DECL_GETLOADAVG@
+HAVE_DECL_GETLOGIN = @HAVE_DECL_GETLOGIN@
 HAVE_DECL_GETLOGIN_R = @HAVE_DECL_GETLOGIN_R@
 HAVE_DECL_GETPAGESIZE = @HAVE_DECL_GETPAGESIZE@
 HAVE_DECL_GETUSERSHELL = @HAVE_DECL_GETUSERSHELL@
@@ -506,6 +515,7 @@ HAVE_LCHOWN = @HAVE_LCHOWN@
 HAVE_LINK = @HAVE_LINK@
 HAVE_LINKAT = @HAVE_LINKAT@
 HAVE_LONG_LONG_INT = @HAVE_LONG_LONG_INT@
+HAVE_MAX_ALIGN_T = @HAVE_MAX_ALIGN_T@
 HAVE_MBRLEN = @HAVE_MBRLEN@
 HAVE_MBRTOWC = @HAVE_MBRTOWC@
 HAVE_MBSINIT = @HAVE_MBSINIT@
@@ -530,6 +540,7 @@ HAVE_PREAD = @HAVE_PREAD@
 HAVE_PTSNAME = @HAVE_PTSNAME@
 HAVE_PTSNAME_R = @HAVE_PTSNAME_R@
 HAVE_PWRITE = @HAVE_PWRITE@
+HAVE_QSORT_R = @HAVE_QSORT_R@
 HAVE_RANDOM = @HAVE_RANDOM@
 HAVE_RANDOM_H = @HAVE_RANDOM_H@
 HAVE_RANDOM_R = @HAVE_RANDOM_R@
@@ -622,11 +633,12 @@ INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
 INT32_MAX_LT_INTMAX_MAX = @INT32_MAX_LT_INTMAX_MAX@
 INT64_MAX_EQ_LONG_MAX = @INT64_MAX_EQ_LONG_MAX@
 LDFLAGS = @LDFLAGS@
-LIBGNU_LIBDEPS = @LIBGNU_LIBDEPS@
-LIBGNU_LTLIBDEPS = @LIBGNU_LTLIBDEPS@
+LIBBGREP_LIBDEPS = @LIBBGREP_LIBDEPS@
+LIBBGREP_LTLIBDEPS = @LIBBGREP_LTLIBDEPS@
 LIBINTL = @LIBINTL@
 LIBOBJS = @LIBOBJS@
 LIBS = @LIBS@
+LIMITS_H = @LIMITS_H@
 LOCALCHARSET_TESTS_ENVIRONMENT = @LOCALCHARSET_TESTS_ENVIRONMENT@
 LOCALE_FR_UTF8 = @LOCALE_FR_UTF8@
 LOCALE_JA = @LOCALE_JA@
@@ -638,6 +650,7 @@ MKDIR_P = @MKDIR_P@
 NEXT_AS_FIRST_DIRECTIVE_ERRNO_H = @NEXT_AS_FIRST_DIRECTIVE_ERRNO_H@
 NEXT_AS_FIRST_DIRECTIVE_GETOPT_H = @NEXT_AS_FIRST_DIRECTIVE_GETOPT_H@
 NEXT_AS_FIRST_DIRECTIVE_INTTYPES_H = @NEXT_AS_FIRST_DIRECTIVE_INTTYPES_H@
+NEXT_AS_FIRST_DIRECTIVE_LIMITS_H = @NEXT_AS_FIRST_DIRECTIVE_LIMITS_H@
 NEXT_AS_FIRST_DIRECTIVE_STDDEF_H = @NEXT_AS_FIRST_DIRECTIVE_STDDEF_H@
 NEXT_AS_FIRST_DIRECTIVE_STDINT_H = @NEXT_AS_FIRST_DIRECTIVE_STDINT_H@
 NEXT_AS_FIRST_DIRECTIVE_STDIO_H = @NEXT_AS_FIRST_DIRECTIVE_STDIO_H@
@@ -650,6 +663,7 @@ NEXT_AS_FIRST_DIRECTIVE_WCTYPE_H = @NEXT_AS_FIRST_DIRECTIVE_WCTYPE_H@
 NEXT_ERRNO_H = @NEXT_ERRNO_H@
 NEXT_GETOPT_H = @NEXT_GETOPT_H@
 NEXT_INTTYPES_H = @NEXT_INTTYPES_H@
+NEXT_LIMITS_H = @NEXT_LIMITS_H@
 NEXT_STDDEF_H = @NEXT_STDDEF_H@
 NEXT_STDINT_H = @NEXT_STDINT_H@
 NEXT_STDIO_H = @NEXT_STDIO_H@
@@ -731,9 +745,11 @@ REPLACE_PTSNAME = @REPLACE_PTSNAME@
 REPLACE_PTSNAME_R = @REPLACE_PTSNAME_R@
 REPLACE_PUTENV = @REPLACE_PUTENV@
 REPLACE_PWRITE = @REPLACE_PWRITE@
+REPLACE_QSORT_R = @REPLACE_QSORT_R@
 REPLACE_RANDOM_R = @REPLACE_RANDOM_R@
 REPLACE_READ = @REPLACE_READ@
 REPLACE_READLINK = @REPLACE_READLINK@
+REPLACE_READLINKAT = @REPLACE_READLINKAT@
 REPLACE_REALLOC = @REPLACE_REALLOC@
 REPLACE_REALPATH = @REPLACE_REALPATH@
 REPLACE_REMOVE = @REPLACE_REMOVE@
@@ -762,6 +778,7 @@ REPLACE_STRTOIMAX = @REPLACE_STRTOIMAX@
 REPLACE_STRTOK_R = @REPLACE_STRTOK_R@
 REPLACE_STRTOUMAX = @REPLACE_STRTOUMAX@
 REPLACE_SYMLINK = @REPLACE_SYMLINK@
+REPLACE_SYMLINKAT = @REPLACE_SYMLINKAT@
 REPLACE_TMPFILE = @REPLACE_TMPFILE@
 REPLACE_TOWLOWER = @REPLACE_TOWLOWER@
 REPLACE_TTYNAME_R = @REPLACE_TTYNAME_R@
@@ -804,6 +821,7 @@ abs_builddir = @abs_builddir@
 abs_srcdir = @abs_srcdir@
 abs_top_builddir = @abs_top_builddir@
 abs_top_srcdir = @abs_top_srcdir@
+ac_ct_AR = @ac_ct_AR@
 ac_ct_CC = @ac_ct_CC@
 am__include = @am__include@
 am__leading_dot = @am__leading_dot@
@@ -859,7 +877,7 @@ top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 AM_CFLAGS = -I$(top_builddir)/lib -I$(top_srcdir)/lib
 bgrep_SOURCES = bgrep.c parse_integer.c print_output.c byte_pattern.c
-bgrep_LDADD = $(top_srcdir)/lib/libgnu.a $(LIBINTL)
+bgrep_LDADD = $(top_srcdir)/lib/libbgrep.a $(LIBINTL)
 all: all-am
 
 .SUFFIXES:

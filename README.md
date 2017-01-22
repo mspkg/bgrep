@@ -15,11 +15,12 @@ sudo apt-get install build-essential gnulib
 
 Once you have those tools, it is the normal autotools build process.
 ```bash
+./bootstrap
 ./configure
 make
 make check
 ```
-And optionally: (*note: this part is untested*)
+And optionally:
 ```
 sudo make install
 ```
