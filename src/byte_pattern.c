@@ -190,6 +190,7 @@ struct byte_pattern *byte_pattern_from_string(const char *pattern_str) {
 							fprintf(stderr,
 								"%s: Unexpected close group character ')' (missing ')'?)\n",
 								program_name);
+							goto CLEANUP;
 						}
 						parse_mode = MODE_WAITING_GROUP_MULT;
 						++h;
