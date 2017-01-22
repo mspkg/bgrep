@@ -1,4 +1,4 @@
-AC_INIT([bgrep], [0.3], [rsharo@users.noreply.github.com])
+AC_INIT([bgrep], [0.4], [rsharo@users.noreply.github.com])
 AM_INIT_AUTOMAKE([-Wall -Werror foreign])
 AC_PROG_CC
 gl_EARLY

@@ -243,7 +243,7 @@ void usage(int full) {
 			"         wildcard bytes:                 '\"header\" ?? \"trailer\"'\n"
 			"         repeated bytes/strings/groups:  '66*1k \"foo\"*3 (666f6f) * 7M'\n"
 			"         escaped quotes in strings:      '\"\\\"quoted\\\"\"'\n"
-			"         any combinations thereof:       '((\"foo\"*3 ??)*1k ff \"bar\") * 2'\n"
+			"         any combinations thereof:       '((\"foo\"*3 ?\?)*1k ff \"bar\") * 2'\n"
 			"\n"
 			"      More examples:\n"
 			"         'ffeedd??cc'        Matches bytes 0xff, 0xee, 0xff, <any>, 0xcc\n"
