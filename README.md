@@ -1,3 +1,4 @@
+# Intro
 I'm terribly annoyed by the fact that grep(1) cannot look for binary
 strings. I'm even more annoyed by the fact that a simple search for 
 "binary grep" doesn't yield a tool which could do that. So I ~~wrote one~~ *gratuitously forked one*.
@@ -5,8 +6,61 @@ strings. I'm even more annoyed by the fact that a simple search for
 **Original work by [tmbinc/bgrep](https://github.com/tmbinc/bgrep)**
 
 Feel free to modify, branch, fork, improve. Re-licenses as BSD.
+# `bgrep` "manpage"
 
-## Building
+```
+$ bgrep --help
+Usage: bgrep [OPTION...] PATTERN [FILE...]
+  or:  bgrep [OPTION...] --hex-pattern=PATTERN [FILE...]
+Search for a byte PATTERN in each FILE or standard input
+
+  -b, --byte-offset          show byte offsets; disables xxd output mode
+  -c, --count                print a match count for each file; disables xxd
+                             output mode
+  -l, --files-with-matches   print the names of files containing matches;
+                             implies 'first-only'; disables xxd output mode
+  -q, --quiet                suppress all normal output; implies 'first-only'
+  -F, --first-only           stop searching after the first match in each file
+  -H, --with-filename        show filenames when reporting matches
+  -r, --recursive            descend recursively into directories
+  -A, --after-context=BYTES  print BYTES of context after each match if
+                             possible (xxd output mode only)
+  -B, --before-context=BYTES print BYTES of context before each match if
+                             possible (xxd output mode only)
+  -C, --context=BYTES        print BYTES of context before and after each match
+                             if possible (xxd output mode only)
+  -s, --skip=BYTES           skip or seek BYTES forward before searching
+  -x, --hex-pattern=PATTERN  use PATTERN for matching
+  -?, --help                 give this help list
+      --usage                give a short usage message
+  -V, --version              print program version
+
+Mandatory or optional arguments to long options are also mandatory or optional
+for any corresponding short options.
+
+ PATTERN may consist of the following elements:
+    hex byte values:                '666f6f 62 61 72'
+    quoted strings:                 '"foobar"'
+    wildcard bytes:                 '??'
+    groupings:                      '(66 6f 6f)'
+    repeated bytes/strings/groups:  '(666f6f)*3'
+    escaped quotes in strings:      '"\"quoted\""'
+    any combinations thereof:       '(("foo"*3 ??)*1k ff "bar") * 2'
+
+ More examples:
+    'ffeedd??cc'            Matches bytes 0xff, 0xee, 0xdd, <any byte>, 0xcc
+    '"foo"'                 Matches bytes 0x66, 0x6f, 0x6f
+    '"foo"00"bar"'          Matches "foo", a null character, then "bar"
+    '"foo"??"bar"'          Matches "foo", then any byte, then "bar"
+    '"foo"??*10"bar"'       Matches "foo", then exactly 10 bytes, then "bar"
+
+ BYTES and REPEAT may be followed by the following multiplicative suffixes:
+   c =1, w =2, b =512, kB =1000, K =1024, MB =1000*1000, M =1024*1024, xM =M
+   GB =1000*1000*1000, G =1024*1024*1024, and so on for T, P, E, Z, Y.
+
+ FILE can be a path to a file or '-', which means 'standard input'
+```
+# Build Instructions
 First, you need to have [make](https://www.gnu.org/software/make/manual/make.html), [gcc](https://gcc.gnu.org/), [automake](https://www.gnu.org/software/automake/), and [gnulib](https://www.gnu.org/software/gnulib/) installed.
 On Debian and derivatives:
 ```bash
@@ -25,58 +79,9 @@ And optionally:
 sudo make install
 ```
 
-## `bgrep` "manpage"
-
-```
-$ bgrep --help
-Usage: bgrep [OPTION...] PATTERN [FILE...]
-
-  -A, --after-context=AFTER  print AFTER bytes of context after each match if
-                             possible (xxd output mode only)
-  -b, --byte-offset          show byte offsets. Disables xxd output mode.
-  -B, --before-context=BEFORE   print BEFORE bytes of context before each match
-                             if possible (xxd output mode only)
-  -c, --count                print a match count for each file. Disables xxd
-                             output mode.
-  -C, --context=CONTEXT      print CONTEXT bytes of context before and after
-                             each match if possible (xxd output mode only)
-  -F, --first-only           stop searching after the first match
-  -H, --with-filename        show filenames when reporting matches
-  -l, --files-with-matches   print the names of files containing matches.
-                             Implies 'first-only'. Disables xxd output mode.
-  -q, --quiet                do not print output. Produce return code only.
-                             Implies 'first only'.
-  -r, --recursive            descend recursively into directories
-  -s, --skip=SKIP            skip or seek SKIP bytes forward before searching
-  -x, --hex-pattern=PATTERN  the PATTERN to match
-
-  PATTERN may consist of the following elements:
-     hex byte values:                '666f6f 62 61 72'
-     quoted strings:                 '"foobar"'
-     wildcard bytes:                 '"header" ?? "trailer"'
-     repeated bytes/strings/groups:  '66*1k "foo"*3 (666f6f) * 7M'
-     escaped quotes in strings:      '"\"quoted\""'
-     any combinations thereof:       '(("foo"*3 ??)*1k ff "bar") * 2'
- 
-  More examples:
-     'ffeedd??cc'        Matches bytes 0xff, 0xee, 0xff, <any>, 0xcc
-     '"foo"'             Matches bytes 0x66, 0x6f, 0x6f
-     '"foo"00"bar"'      Matches "foo", a null character, then "bar"
-     '"foo"??"bar"'      Matches "foo", then any byte, then "bar"
- 
-  SKIP, BEFORE, AFTER, CONTEXT, and REPEAT may be followed by the following
-  multiplicative suffixes:
-    c =1, w =2, b =512, kB =1000, K =1024, MB =1000*1000, M =1024*1024, xM =M
-    GB =1000*1000*1000, G =1024*1024*1024, and so on for T, P, E, Z, Y.
- 
 
 
-  -?, --help                 give this help list
-      --usage                give a short usage message
-  -V, --version              print program version
-```
-
-## Examples
+# Examples
 ### Basic (xxd-style) usage
 ```bash
 $ echo "1234foo89abfoof0123" | bgrep \"foo\"
