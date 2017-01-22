@@ -303,7 +303,10 @@ struct byte_pattern *byte_pattern_from_string(const char *pattern_str) {
 	} else if (parse_mode == MODE_TXT_ESC) {
 		fprintf(stderr, "%s: missing character after escape ('\\') in pattern string\n", program_name);
 		goto CLEANUP;
-	} if (!pattern->len) {
+	} else if (groupstack_top > 1 || (groupstack_top == 1 && parse_mode != MODE_WAITING_GROUP_MULT)) {
+		fprintf(stderr, "%s: group with no ')' in pattern string\n", program_name);
+		goto CLEANUP;
+	} else if (!pattern->len) {
 		fprintf(stderr, "%s: empty pattern string\n", program_name);
 		goto CLEANUP;
 	} else if (*h) {

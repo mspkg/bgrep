@@ -169,7 +169,7 @@ parse_opt (int key, char *arg, struct argp_state *state) {
 				}
 				config->pattern = byte_pattern_from_string(arg);
 				if (config->pattern == NULL) {
-					argp_usage(state);
+					return EINVAL;
 				}
 				break;
 			case ARGP_KEY_INIT:
@@ -179,7 +179,7 @@ parse_opt (int key, char *arg, struct argp_state *state) {
 				if (config->pattern == NULL) {
 					config->pattern = byte_pattern_from_string(arg);
 					if (config->pattern == NULL) {
-						return 1;
+						return EINVAL;
 					}
 				} else {
 					--first_file;
