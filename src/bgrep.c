@@ -55,7 +55,7 @@ enum { RESULT_MATCH = 0, RESULT_NO_MATCH = 1, RESULT_ERROR = 2};
 
 static error_t parse_opt (int key, char *optarg, struct argp_state *state);
 
-const char *argp_program_version = "bgrep " VERSION;
+const char *argp_program_version = PACKAGE_STRING;
 const char *argp_program_bug_address = "https://github.com/rsharo/bgrep/issues";
 static const char doc[] =	" PATTERN may consist of the following elements:\n"
 				"    hex byte values:                '666f6f 62 61 72'\n"
