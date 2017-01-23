@@ -64,10 +64,14 @@ for any corresponding short options.
 Report bugs to <https://github.com/rsharo/bgrep/issues>.
 ```
 # Build Instructions
-First, you need to have [make](https://www.gnu.org/software/make/manual/make.html), [gcc](https://gcc.gnu.org/), [automake](https://www.gnu.org/software/automake/), and [gnulib](https://www.gnu.org/software/gnulib/) installed.
+First, you need to have [gcc](https://gcc.gnu.org/), [make](https://www.gnu.org/software/make/manual/make.html),
+[automake](https://www.gnu.org/software/automake/), and [autoconf](https://www.gnu.org/software/autoconf/autoconf.html)
+installed.  You may also need [gnulib](https://www.gnu.org/software/gnulib/) if you're building from a machine with no
+network access: gnulib normally auto-downloads during the `bootstrap` script.
+
 On Debian and derivatives:
 ```bash
-sudo apt-get install build-essential gnulib
+sudo apt-get install build-essential
 ```
 
 Once you have those tools, it is the normal autotools build process:
@@ -76,7 +80,7 @@ Once you have those tools, it is the normal autotools build process:
 ./configure
 make
 ```
-The binary goes to `src/bgrep`
+The binary is saved as `src/bgrep`
 
 Optional build steps:
 ```bash
@@ -150,6 +154,12 @@ stdin:00000005
 ```bash
 $ echo "oof11f22foo" | bgrep '66????66'
 0000002: 6631 3166 3232 66                        f11f22f
+```
+### Use repeat groups to enter complex patterns
+```bash
+$ echo "a1a2a3a4a5bbbokok" | bgrep -H '(61??)*5 62*3 "ok"*2'
+stdin:0000000: 6131 6132 6133 6134 6135 6262 626f 6b6f  a1a2a3a4a5bbboko
+stdin:0000010: 6b                                       k
 ```
 ### Skip forward in the file
 ```bash
