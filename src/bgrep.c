@@ -250,7 +250,7 @@ off_t skip(int fd, off_t current, off_t n) {
 int searchfile(const char *filename, int fd, const struct byte_pattern *pattern) {
 	int result = RESULT_NO_MATCH;
 	const size_t lenm1 = pattern->len - 1;
-	const size_t search_size = MIN(INITIAL_BUFSIZE, 2 * pattern->len);
+	const size_t search_size = MAX(INITIAL_BUFSIZE, 2 * pattern->len);
 	unsigned char *buf = xmalloc(params.bytes_before + search_size);
 	const unsigned char *endp = buf + search_size - lenm1;
 	unsigned char *readp = buf;
