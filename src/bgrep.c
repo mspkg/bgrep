@@ -50,6 +50,7 @@
 
 /* Config parameters */
 struct bgrep_config params = { 0 };
+enum { DUMP_PATTERN_KEY = 0x1000 };
 enum { INITIAL_BUFSIZE = 2048, MIN_REALLOC = 16 };
 enum { RESULT_MATCH = 0, RESULT_NO_MATCH = 1, RESULT_ERROR = 2};
 
@@ -101,6 +102,7 @@ static struct argp_option const options[] = {
 	{ "after-context",      'A', "BYTES", 0, "print BYTES of context after each match if possible (xxd output mode only)", 3 },
 	{ "context",            'C', "BYTES", 0, "print BYTES of context before and after each match if possible (xxd output mode only)", 3 },
 	{ "hex-pattern",        'x', "PATTERN", OPTION_NO_USAGE, "use PATTERN for matching", 4 },
+	{ "bgrep-dump-pattern", DUMP_PATTERN_KEY, 0, OPTION_HIDDEN, "dump PATTERN to stdout as raw bytes, then exit (diagnostic only)", 0 },
 	{ 0, 0, 0, 0, 0, 0}
 };
 
@@ -194,6 +196,13 @@ parse_opt (int key, char *arg, struct argp_state *state) {
 				}
 				break;
 			}
+			case DUMP_PATTERN_KEY:
+				if (config->pattern != NULL) {
+					fwrite(config->pattern->value, 1, config->pattern->len, stdout);
+					fwrite(config->pattern->mask, 1, config->pattern->len, stdout);
+				}
+				exit(0);
+
 			case ARGP_KEY_NO_ARGS:
 				if (config->pattern == NULL) {
 					argp_usage(state);
@@ -201,6 +210,7 @@ parse_opt (int key, char *arg, struct argp_state *state) {
 				config->filenames = &STD_IN_FILENAME;
 				config->filename_count = 1;
 				break;
+
 			case ARGP_KEY_END:
 			default:
 				return ARGP_ERR_UNKNOWN;
