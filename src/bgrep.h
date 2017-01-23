@@ -62,6 +62,7 @@ struct byte_pattern {
 };
 
 enum { MAX_REPEAT_GROUPS = 64 };
+enum { RESULT_MATCH = 0, RESULT_NO_MATCH = 1, RESULT_ERROR = 2};
 
 extern struct bgrep_config params;
 

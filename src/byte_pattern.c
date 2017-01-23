@@ -92,7 +92,7 @@ void byte_pattern_append_char(struct byte_pattern *ptr, unsigned char value, uns
 /* Extends the pattern by (num_bytes*repeat) by duplicating the trailing num_bytes of the pattern. */
 void byte_pattern_repeat(struct byte_pattern *ptr, size_t num_bytes, size_t repeat) {
 	if (num_bytes > ptr->len) {
-		die(1, "Cannot repeat %z bytes of a pattern that is only %z long", num_bytes, ptr->len);
+		die(RESULT_ERROR, "Cannot repeat %z bytes of a pattern that is only %z long", num_bytes, ptr->len);
 	}
 
 	byte_pattern_reserve(ptr, ptr->len + num_bytes * repeat);

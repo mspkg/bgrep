@@ -52,7 +52,6 @@
 struct bgrep_config params = { 0 };
 enum { DUMP_PATTERN_KEY = 0x1000 };
 enum { INITIAL_BUFSIZE = 2048, MIN_REALLOC = 16 };
-enum { RESULT_MATCH = 0, RESULT_NO_MATCH = 1, RESULT_ERROR = 2};
 
 static error_t parse_opt (int key, char *optarg, struct argp_state *state);
 
@@ -167,59 +166,55 @@ parse_opt (int key, char *arg, struct argp_state *state) {
 				break;
 			case 'x':
 				if (config->pattern != NULL) {
-					die(1, "Cannot set the search pattern twice");
+					fprintf(stderr, "%s: Cannot set the search pattern twice", program_name);
+					return EINVAL;
 				}
 				config->pattern = byte_pattern_from_string(arg);
 				if (config->pattern == NULL) {
 					return EINVAL;
 				}
 				break;
-			case ARGP_KEY_INIT:
-				break;
-			case ARGP_KEY_ARG: {
-				int first_file = state->next;
-				if (config->pattern == NULL) {
-					config->pattern = byte_pattern_from_string(arg);
-					if (config->pattern == NULL) {
-						return EINVAL;
-					}
-				} else {
-					--first_file;
-				}
-				if (first_file == state->argc) {
-					config->filenames = &STD_IN_FILENAME;
-					config->filename_count = 1;
-				} else {
-					config->filenames = (const char **)(state->argv + first_file);
-					config->filename_count = state->argc - first_file;
-					state->next = state->argc;
-				}
-				break;
-			}
 			case DUMP_PATTERN_KEY:
 				if (config->pattern != NULL) {
 					fwrite(config->pattern->value, 1, config->pattern->len, stdout);
 					fwrite(config->pattern->mask, 1, config->pattern->len, stdout);
 				}
 				exit(0);
+			case ARGP_KEY_ARG:
+				if (config->pattern != NULL) {
+					return ARGP_ERR_UNKNOWN; // causes re-process as ARGP_KEY_ARGS
+				}
+				config->pattern = byte_pattern_from_string(arg);
+				return (config->pattern == NULL) ? EINVAL : 0;
+				break;
+			case ARGP_KEY_ARGS: {
+				int first_file = state->next;
+				config->filenames = (const char **)(state->argv + first_file);
+				config->filename_count = state->argc - first_file;
+				state->next = state->argc;
+				break;
+			}
 
-			case ARGP_KEY_NO_ARGS:
+			case ARGP_KEY_END:
 				if (config->pattern == NULL) {
 					argp_usage(state);
 				}
-				config->filenames = &STD_IN_FILENAME;
-				config->filename_count = 1;
+				if (config->filename_count == 0) {
+					config->filenames = &STD_IN_FILENAME;
+					config->filename_count = 1;
+				}
 				break;
 
-			case ARGP_KEY_END:
+			case ARGP_KEY_INIT:
+			case ARGP_KEY_NO_ARGS:
 			default:
 				return ARGP_ERR_UNKNOWN;
 	}
 
 	if (invalid != LONGINT_OK) {
 		char flag[3] = { '-', key, 0 };
-		die(invalid == LONGINT_OVERFLOW ? EOVERFLOW : 1,
-			"Invalid number for option %s: %s", quote_n(0, flag), quote_n(1, optarg));
+		fprintf(stderr, "%s: Invalid number for option %s: %s", program_name, quote_n(0, flag), quote_n(1, optarg));
+		return invalid == LONGINT_OVERFLOW ? EOVERFLOW : EINVAL;
 	}
 	return 0;
 }
@@ -267,7 +262,9 @@ int searchfile(const char *filename, int fd, const struct byte_pattern *pattern)
 		file_offset = skip(fd, file_offset, params.skip_to);
 		if (file_offset != params.skip_to)
 		{
-			die(1, "Failed to skip ahead to offset 0x%jx", file_offset);
+			fprintf(stderr, "%s: Failed to skip ahead to offset 0x%jx", program_name, file_offset);
+			result = RESULT_ERROR;
+			goto CLEANUP;
 		}
 	}
 
@@ -362,7 +359,8 @@ int recurse(const char *path, struct byte_pattern *pattern) {
 		DIR *dir = opendir(path);
 		if (!dir)
 		{
-			die(2, "invalid path: %s: %s", path, strerror(errno));
+			fprintf(stderr, "%s: invalid path: %s: %s", program_name, path, strerror(errno));
+			return RESULT_ERROR;
 		}
 
 		struct dirent *d;
