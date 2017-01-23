@@ -38,6 +38,7 @@
 #include <ctype.h>
 #include <stdarg.h>
 #include <errno.h>
+#include <error.h>
 
 /* gnulib dependencies */
 #include "argp.h"
@@ -53,7 +54,7 @@ struct bgrep_config params = { 0 };
 enum { DUMP_PATTERN_KEY = 0x1000 };
 enum { INITIAL_BUFSIZE = 2048, MIN_REALLOC = 16 };
 
-static error_t parse_opt (int key, char *optarg, struct argp_state *state);
+static error_t parse_opt (int key, char *arg, struct argp_state *state);
 
 const char *argp_program_version = PACKAGE_STRING;
 const char *argp_program_bug_address = "<https://github.com/rsharo/bgrep/issues>";
@@ -213,7 +214,7 @@ parse_opt (int key, char *arg, struct argp_state *state) {
 
 	if (invalid != LONGINT_OK) {
 		char flag[3] = { '-', key, 0 };
-		fprintf(stderr, "%s: Invalid number for option %s: %s", program_name, quote_n(0, flag), quote_n(1, optarg));
+		error(0, 0, "Invalid number for option %s: %s", quote_n(0, flag), quote_n(1, arg));
 		return invalid == LONGINT_OVERFLOW ? EOVERFLOW : EINVAL;
 	}
 	return 0;
