@@ -133,17 +133,17 @@ parse_opt (int key, char *arg, struct argp_state *state) {
 				config->print_filenames = 1;
 				break;
 			case 'b':
-				config->print_mode = OFFSETS;
+				config->print_mode = MAX(config->print_mode, OFFSETS);
 				break;
 			case 'c':
-				config->print_mode = COUNT_MATCHES;
+				config->print_mode = MAX(config->print_mode, COUNT_MATCHES);
 				break;
 			case 'l':
-				config->print_mode = LIST_FILENAMES;
+				config->print_mode = MAX(config->print_mode, LIST_FILENAMES);
 				config->first_only = 1;
 				break;
 			case 'q':
-				config->print_mode = QUIET;
+				config->print_mode = MAX(config->print_mode, QUIET);
 				config->first_only = 1;
 				break;
 			case 'r':

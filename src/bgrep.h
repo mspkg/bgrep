@@ -28,10 +28,11 @@
 #  define O_BINARY 0
 #endif
 
+/* numbered to match precedence in grep */
 enum bgrep_print_modes {
 	XXD_DUMP = 0,
-	COUNT_MATCHES = 1,
-	OFFSETS = 2,
+	OFFSETS = 1,
+	COUNT_MATCHES = 2,
 	LIST_FILENAMES = 3,
 	QUIET = 4
 };
