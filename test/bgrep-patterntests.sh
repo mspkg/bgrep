@@ -1,7 +1,7 @@
 #!/bin/bash
 
 BGREP=../src/bgrep
-
+XXD=${XXD:-xxd}
 
 function return_code_test() {
 	local input="$1"
@@ -22,7 +22,7 @@ function return_code_test() {
 function pattern_test() {
 	local pattern="$1"
 	local expected="$2"
-	local result=$(${BGREP} -x "${pattern}" --bgrep-dump-pattern | xxd -p -c 131072)
+	local result=$(${BGREP} -x "${pattern}" --bgrep-dump-pattern | ${XXD} -p -c 131072)
 	if [[ "${result}" != "${expected}" ]] ; then
 		echo "${FUNCNAME[0]}: Test FAILED."
 		echo "Pattern: ${pattern}"

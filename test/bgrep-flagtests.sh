@@ -1,6 +1,18 @@
 #!/bin/bash
 
 BGREP=../src/bgrep
+XXD=${XXD:-xxd}
+
+function XXDFUN() {
+	${XXD} "$@"
+}
+
+if (echo | ${XXD} | grep -q "^........:") ; then
+	echo XXD has 8-digit offsets. Adjusting.
+	function XXDFUN() {
+		${XXD} "$@" | sed -e 's/^.\(.......:\)/\1/g'
+	}
+fi
 
 # Test xxd output against a known expected output string.
 # expected should be:
@@ -9,7 +21,7 @@ BGREP=../src/bgrep
 # EOF
 function test_xxd_output() {
 	input="1234foo89abfoof0123"
-	expected="$(echo ${input} | xxd -s 4 -l 3 ; echo ${input} | xxd -s 11 -l 3)"
+	expected="$(echo ${input} | XXDFUN -s 4 -l 3 ; echo ${input} | XXDFUN -s 11 -l 3)"
 	actual="$(echo -n "${input}" | ${BGREP} \"foo\")"
 
 	if [[ "${expected}" != "${actual}" ]] ; then
@@ -23,8 +35,8 @@ function test_xxd_output() {
 # bgrep for a single wildcard character matches everything.  Output should be identical to streaming through "xxd" with default ("normal") settings.
 function test_bgrep_matches_xxd() {
 	# Run some random data through xxd
-	expected="$(dd if=/dev/urandom bs=1 count=1k status=none | xxd)"
-	actual="$(echo "${expected}" | xxd -r | ${BGREP} '??')"
+	expected="$(dd if=/dev/urandom bs=1 count=1k status=none | XXDFUN)"
+	actual="$(echo "${expected}" | XXDFUN -r | ${BGREP} '??')"
 
 	if [[ "${expected}" != "${actual}" ]] ; then
 		echo "${FUNCNAME[0]}: Test FAILED."
@@ -39,8 +51,8 @@ function test_bgrep_matches_xxd() {
 # Note that "xxd -r" pads with null characters when there are gaps in the data.
 function test_partial_match_xxd_revert() {
 	teststring="1234foo89abfoof0123"
-	expected="$(echo -en '\x00\x00\x00\x00foo\x00\x00\x00\x00foo' | xxd)"
-	actual="$(echo ${teststring} | ${BGREP} \"foo\" | xxd -c 3 -r | xxd)"
+	expected="$(echo -en '\x00\x00\x00\x00foo\x00\x00\x00\x00foo' | XXDFUN)"
+	actual="$(echo ${teststring} | ${BGREP} \"foo\" | XXDFUN -c 3 -r | XXDFUN)"
 
 	if [[ "${expected}" != "${actual}" ]] ; then
 		echo "${FUNCNAME[0]}: Test FAILED."
@@ -58,9 +70,9 @@ function test_offset() {
 	if [[ "${expected}" != "${actual}" ]] ; then
 		echo "${FUNCNAME[0]}: Test FAILED."
 		echo -e "--- Expected ---"
-		echo "${expected}" | xxd
+		echo "${expected}" | XXDFUN
 		echo -e "+++ Actual +++"
-		echo "${actual}" | xxd
+		echo "${actual}" | XXDFUN
 		return 1
 	fi
 }
@@ -73,9 +85,9 @@ function test_count() {
 	if [[ "${expected}" != "${actual}" ]] ; then
 		echo "${FUNCNAME[0]}: Test FAILED."
 		echo -e "--- Expected ---"
-		echo "${expected}" | xxd
+		echo "${expected}" | XXDFUN
 		echo -e "+++ Actual +++"
-		echo "${actual}" | xxd
+		echo "${actual}" | XXDFUN
 		return 1
 	fi
 }
@@ -88,9 +100,9 @@ function test_find_first() {
 	if [[ "${expected}" != "${actual}" ]] ; then
 		echo "${FUNCNAME[0]}: Test FAILED."
 		echo -e "--- Expected ---"
-		echo "${expected}" | xxd
+		echo "${expected}" | XXDFUN
 		echo -e "+++ Actual +++"
-		echo "${actual}" | xxd
+		echo "${actual}" | XXDFUN
 		return 1
 	fi
 }
@@ -103,9 +115,9 @@ function test_overlap() {
 	if [[ "${expected}" != "${actual}" ]] ; then
 		echo "${FUNCNAME[0]}: Test FAILED."
 		echo -e "--- Expected ---"
-		echo "${expected}" | xxd
+		echo "${expected}" | XXDFUN
 		echo -e "+++ Actual +++"
-		echo "${actual}" | xxd
+		echo "${actual}" | XXDFUN
 		return 1
 	fi
 }
@@ -118,9 +130,9 @@ function test_wildcard() {
 	if [[ "${expected}" != "${actual}" ]] ; then
 		echo "${FUNCNAME[0]}: Test FAILED."
 		echo -e "--- Expected ---"
-		echo "${expected}" | xxd
+		echo "${expected}" | XXDFUN
 		echo -e "+++ Actual +++"
-		echo "${actual}" | xxd
+		echo "${actual}" | XXDFUN
 		return 1
 	fi
 }
@@ -133,39 +145,39 @@ function test_skip() {
 	if [[ "${expected}" != "${actual}" ]] ; then
 		echo "${FUNCNAME[0]}: Test FAILED."
 		echo -e "--- Expected ---"
-		echo "${expected}" | xxd
+		echo "${expected}" | XXDFUN
 		echo -e "+++ Actual +++"
-		echo "${actual}" | xxd
+		echo "${actual}" | XXDFUN
 		return 1
 	fi
 }
 
 function test_dd_skip() {
-	teststring="$((echo foo; dd if=/dev/urandom bs=1 count=2k status=none; echo foofoo; dd if=/dev/urandom bs=1 count=1k status=none) | xxd)"
+	teststring="$((echo foo; dd if=/dev/urandom bs=1 count=2k status=none; echo foofoo; dd if=/dev/urandom bs=1 count=1k status=none) | XXDFUN)"
 	expected="0000804: 666f 6f66 6f6f                           foofoo"
-	actual="$(echo "${teststring}" | xxd -r | ${BGREP} -s 1k \"foo\" )"
+	actual="$(echo "${teststring}" | XXDFUN -r | ${BGREP} -s 1k \"foo\" )"
 
 	if [[ "${expected}" != "${actual}" ]] ; then
 		echo "${FUNCNAME[0]}: Test FAILED."
 		echo -e "--- Expected ---"
-		echo "${expected}" | xxd
+		echo "${expected}" | XXDFUN
 		echo -e "+++ Actual +++"
-		echo "${actual}" | xxd
+		echo "${actual}" | XXDFUN
 		return 1
 	fi
 }
 
 function test_bytes_before() {
 	input="1234foo89abfoof0123"
-	expected="$(echo ${input} | xxd -s 1 -l 6)"
+	expected="$(echo ${input} | XXDFUN -s 1 -l 6)"
 	actual="$(echo -n "${input}" | ${BGREP} -FB 3 \"foo\")"
 
 	if [[ "${expected}" != "${actual}" ]] ; then
 		echo "${FUNCNAME[0]}: Test FAILED."
 		echo -e "--- Expected ---"
-		echo "${expected}" | xxd
+		echo "${expected}" | XXDFUN
 		echo -e "+++ Actual +++"
-		echo "${actual}" | xxd
+		echo "${actual}" | XXDFUN
 		return 1
 	fi
 }
@@ -182,9 +194,9 @@ function test_bytes_after() {
 	if [[ "${expected}" != "${actual}" ]] ; then
 		echo "${FUNCNAME[0]}: Test FAILED."
 		echo -e "--- Expected ---"
-		echo "${expected}" | xxd
+		echo "${expected}" | XXDFUN
 		echo -e "+++ Actual +++"
-		echo "${actual}" | xxd
+		echo "${actual}" | XXDFUN
 		return 1
 	fi
 }
@@ -201,9 +213,9 @@ function test_bytes_around() {
 	if [[ "${expected}" != "${actual}" ]] ; then
 		echo "${FUNCNAME[0]}: Test FAILED."
 		echo -e "--- Expected ---"
-		echo "${expected}" | xxd
+		echo "${expected}" | XXDFUN
 		echo -e "+++ Actual +++"
-		echo "${actual}" | xxd
+		echo "${actual}" | XXDFUN
 		return 1
 	fi
 }
