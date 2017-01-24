@@ -1,5 +1,7 @@
 #include "config.h"
 
+#include <string.h>
+
 #include "quote.h"
 #include "xstrtol.h"
 

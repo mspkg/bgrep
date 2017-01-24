@@ -1,3 +1,11 @@
+#include "config.h"
+
+#include <errno.h>
+#include <error.h>
+#include <stdio.h>
+#include <string.h>
+#include <unistd.h>
+
 #include "bgrep.h"
 
 #undef HEX_DIGIT
@@ -113,7 +121,7 @@ void print_after_fd(int fd, off_t file_offset)
 
                 if (bytes_to_read < 0)
                 {
-                        die(errno, "Error reading context-after-match: read: %s", strerror(errno));
+                        error(RESULT_ERROR, errno, "Error reading context-after-match");
                 }
 
 		print_xxd(buf, bytes_read, file_offset);
@@ -124,7 +132,7 @@ void print_after_fd(int fd, off_t file_offset)
 
         if (lseek(fd, save_pos, SEEK_SET) == (off_t)-1)
         {
-                die(errno, "Could not restore the original file offset after printing context-after-match: lseek: %s", strerror(errno));
+                error(RESULT_ERROR, errno, "Could not restore the original file offset after printing context-after-match");
         }
 }
 

@@ -27,18 +27,15 @@
 
 #include "config.h"
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/types.h>
 #include <dirent.h>
 #include <fcntl.h>
-#include <unistd.h>
-#include <sys/stat.h>
-#include <ctype.h>
-#include <stdarg.h>
 #include <errno.h>
 #include <error.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 /* gnulib dependencies */
 #include "argp.h"
@@ -110,19 +107,6 @@ static struct argp argp = { options, parse_opt, args_doc, doc };
 static const char const *STD_IN_FILENAME = "-";
 
 
-void die(int status, const char* msg, ...) {
-	va_list ap;
-	va_start(ap, msg);
-
-	fprintf(stderr, "%s:", program_name);
-	vfprintf(stderr, msg, ap);
-	fputc('\n', stderr);
-
-	va_end(ap);
-	exit(status);
-}
-
-
 /* Parse a single option. */
 static error_t
 parse_opt (int key, char *arg, struct argp_state *state) {
@@ -167,7 +151,7 @@ parse_opt (int key, char *arg, struct argp_state *state) {
 				break;
 			case 'x':
 				if (config->pattern != NULL) {
-					fprintf(stderr, "%s: Cannot set the search pattern twice", program_name);
+					error(0, 0, "Cannot set the search pattern twice");
 					return EINVAL;
 				}
 				config->pattern = byte_pattern_from_string(arg);
@@ -226,7 +210,7 @@ off_t skip(int fd, off_t current, off_t n) {
 	if (result == (off_t)-1) {
 		if (n < 0)
 		{
-			perror("file descriptor does not support backward lseek");
+			error(0, errno, "cannot lseek backward");
 			return -1;
 		}
 		/* Skip forward the hard way. */
@@ -236,7 +220,7 @@ off_t skip(int fd, off_t current, off_t n) {
 			ssize_t r = read(fd, buf, MIN(n, sizeof(buf)));
 			if (r < 1)
 			{
-				if (r != 0) perror("read");
+				if (r != 0) error(0, 0, "read");
 				return result;
 			}
 			n -= r;
@@ -263,7 +247,7 @@ int searchfile(const char *filename, int fd, const struct byte_pattern *pattern)
 		file_offset = skip(fd, file_offset, params.skip_to);
 		if (file_offset != params.skip_to)
 		{
-			fprintf(stderr, "%s: Failed to skip ahead to offset 0x%jx", program_name, file_offset);
+			error(0, 0, "Failed to skip ahead to offset 0x%jx", file_offset);
 			result = RESULT_ERROR;
 			goto CLEANUP;
 		}
@@ -278,7 +262,7 @@ int searchfile(const char *filename, int fd, const struct byte_pattern *pattern)
 		if (r < 1)
 		{
 			if (r < 0) {
-				perror("read");
+				error(0, 0, "read");
 				result = RESULT_ERROR;
 			}
 			goto CLEANUP;
@@ -291,7 +275,7 @@ int searchfile(const char *filename, int fd, const struct byte_pattern *pattern)
 		r = read(fd, readp+lenm1, 1);
 		if (r != 1) {
 			if (r < 0) {
-				perror("read");
+				error(0, 0, "read");
 				result = RESULT_ERROR;
 			}
 			break;
@@ -353,14 +337,14 @@ int recurse(const char *path, struct byte_pattern *pattern) {
 	}
 
 	if (params.recurse == 0) {
-		fprintf(stderr, "%s: %s: Is a directory\n", program_name, path);
+		error(0, 0, "%s: Is a directory", path);
 		return RESULT_ERROR;
 
 	} else {
 		DIR *dir = opendir(path);
 		if (!dir)
 		{
-			fprintf(stderr, "%s: invalid path: %s: %s", program_name, path, strerror(errno));
+			error(0, errno, "%s", path);
 			return RESULT_ERROR;
 		}
 

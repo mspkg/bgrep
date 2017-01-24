@@ -1,6 +1,9 @@
 #include "config.h"
 
+#include <ctype.h>
+#include <error.h>
 #include <stdlib.h>
+#include <string.h>
 
 /* gnulib dependencies */
 #include "progname.h"
@@ -92,7 +95,7 @@ void byte_pattern_append_char(struct byte_pattern *ptr, unsigned char value, uns
 /* Extends the pattern by (num_bytes*repeat) by duplicating the trailing num_bytes of the pattern. */
 void byte_pattern_repeat(struct byte_pattern *ptr, size_t num_bytes, size_t repeat) {
 	if (num_bytes > ptr->len) {
-		die(RESULT_ERROR, "Cannot repeat %z bytes of a pattern that is only %z long", num_bytes, ptr->len);
+		error(RESULT_ERROR, 0, "Cannot repeat %z bytes of a pattern that is only %z long", num_bytes, ptr->len);
 	}
 
 	byte_pattern_reserve(ptr, ptr->len + num_bytes * repeat);
@@ -144,9 +147,9 @@ struct byte_pattern *byte_pattern_from_string(const char *pattern_str) {
 				switch (token_type) {
 					case QUOTE_TOKEN:
 						if (groupstack_top >= MAX_REPEAT_GROUPS) {
-							fprintf(stderr,
-								"%s: Too many groups (%d). Recompile with higher MAX_REPEAT_GROUPS\n",
-								program_name, groupstack_top);
+							error(0, 0,
+								"Too many groups (%d). Recompile with higher MAX_REPEAT_GROUPS",
+								groupstack_top);
 							goto CLEANUP;
 						}
 						groupstack[groupstack_top++] = pattern->len;
@@ -156,13 +159,12 @@ struct byte_pattern *byte_pattern_from_string(const char *pattern_str) {
 
 					case MULTIPLIER_TOKEN:
 						if (pattern-> len < 1) {
-							fprintf(stderr,
-								"%s: cannot repeat an empty pattern!\n", program_name);
+							error(0, 0, "cannot repeat an empty pattern!");
 							goto CLEANUP;
 						} else if (groupstack_top >= MAX_REPEAT_GROUPS) {
-							fprintf(stderr,
-								"%s: Cannot repeat: Too many groups (%d). Recompile with higher MAX_REPEAT_GROUPS\n",
-								program_name, groupstack_top);
+							error(0, 0,
+								"Too many groups (%d). Recompile with higher MAX_REPEAT_GROUPS",
+								groupstack_top);
 							goto CLEANUP;
 						}
 						groupstack[groupstack_top++] = pattern->len - 1;
@@ -176,9 +178,9 @@ struct byte_pattern *byte_pattern_from_string(const char *pattern_str) {
 
 					case OPEN_GROUP_TOKEN:
 						if (groupstack_top >= MAX_REPEAT_GROUPS) {
-							fprintf(stderr,
-								"%s: Too many groups (%d). Recompile with higher MAX_REPEAT_GROUPS\n",
-								program_name, groupstack_top);
+							error(0, 0,
+								"Too many groups (%d). Recompile with higher MAX_REPEAT_GROUPS",
+								groupstack_top);
 							goto CLEANUP;
 						}
 						groupstack[groupstack_top++] = pattern->len;
@@ -187,9 +189,8 @@ struct byte_pattern *byte_pattern_from_string(const char *pattern_str) {
 
 					case CLOSE_GROUP_TOKEN:
 						if (groupstack_top < 1) {
-							fprintf(stderr,
-								"%s: Unexpected close group character ')' (missing ')'?)\n",
-								program_name);
+							error(0, 0,
+								"unmatched ')' in pattern string");
 							goto CLEANUP;
 						}
 						parse_mode = MODE_WAITING_GROUP_MULT;
@@ -197,7 +198,7 @@ struct byte_pattern *byte_pattern_from_string(const char *pattern_str) {
 						continue;
 
 					case ESC_TOKEN:
-						fprintf(stderr, "%s: Unexpected escape character '\\' in hex string\n", program_name);
+						error(0, 0, "Unexpected escape character '\\' in hex string");
 						goto CLEANUP;
 
 					case OTHER_TOKEN:
@@ -254,7 +255,7 @@ struct byte_pattern *byte_pattern_from_string(const char *pattern_str) {
 
 				size_t mult_len = strcspn(h, END_MULTIPLIER_CHARS);
 				if (mult_len == 0) {
-					fprintf(stderr, "%s: missing value for multiplier\n", program_name);
+					error(0, 0, "missing REPEAT value for multiplier");
 					goto CLEANUP;
 				}
 				char multiplier[mult_len + 1];
@@ -265,12 +266,10 @@ struct byte_pattern *byte_pattern_from_string(const char *pattern_str) {
 				multiplier[mult_len] = 0;
 				numrepeat = parse_integer(multiplier, &invalid);
 				if (invalid != LONGINT_OK) {
-					fprintf(stderr,
-						"%s: unable to parse group multiplier %s\n", program_name, quote(multiplier));
+					error(0, 0, "unable to parse group multiplier %s", quote(multiplier));
 					goto CLEANUP;
 				} else if (numrepeat < 1) {
-					fprintf(stderr,
-						"%s: cannot repeat a group less than once!\n", program_name);
+					error(0, 0, "cannot repeat a group less than once!");
 					goto CLEANUP;
 				}
 				byte_pattern_repeat(pattern, pattern->len - groupstack[--groupstack_top], numrepeat-1);
@@ -290,7 +289,7 @@ struct byte_pattern *byte_pattern_from_string(const char *pattern_str) {
 
 			if ((v0 == -1) || (v1 == -1)) {
 				char hex[3] = {h[0],h[1], 0};
-				fprintf(stderr, "%s: invalid 2-hex-digit byte value: %s\n", program_name, quote(hex));
+				error(0, 0, "invalid 2-hex-digit byte value: %s", quote(hex));
 				goto CLEANUP;
 			}
 			byte_pattern_append_char(pattern, (v0 << 4) | v1, 0xff);
@@ -301,37 +300,37 @@ struct byte_pattern *byte_pattern_from_string(const char *pattern_str) {
 	// We come out in MODE_HEX or MODE_WAITING_GROUP_MULT if the pattern is valid
 	switch (parse_mode) {
 		case MODE_TXT:
-			fprintf(stderr, "%s: unmatched %s in pattern string\n", program_name, quote("\""));
+			error(0, 0, "unmatched %s in pattern string", quote("\""));
 			goto CLEANUP;
 		case MODE_TXT_ESC:
-			fprintf(stderr, "%s: missing character after escape symbol %s in pattern string\n", program_name, quote("\\"));
+			error(0, 0, "missing character after escape symbol '\\' in pattern string");
 			goto CLEANUP;
 		case MODE_MULTIPLY:
-			fprintf(stderr, "%s: REPEAT value missing after repeat symbol %s in pattern string\n", program_name, quote("*"));
+			error(0, 0, "REPEAT value missing after repeat symbol %s in pattern string", quote("*"));
 			goto CLEANUP;
 		case MODE_WAITING_GROUP_MULT:
 			if (groupstack_top > 1) {
-				fprintf(stderr, "%s: unmatched %s in pattern string\n", program_name, quote("("));
+				error(0, 0, "unmatched %s in pattern string", quote("("));
 				goto CLEANUP;
 			}
 			break;
 		case MODE_HEX:
 			if (groupstack_top > 0) {
-				fprintf(stderr, "%s: unmatched %s in pattern string\n", program_name, quote("("));
+				error(0, 0, "unmatched %s in pattern string", quote("("));
 				goto CLEANUP;
 			}
 			break;
 		default:
-			fprintf(stderr, "%s: unexpected pattern parse mode: %d\n", program_name, parse_mode);
+			error(0, 0, "unexpected pattern parse mode: %d", parse_mode);
 			goto CLEANUP;
 	}
 
 	if (!pattern->len) {
-		fprintf(stderr, "%s: empty pattern string -- use %s to match all bytes\n", program_name, quote("?\?"));
+		error(0, 0, "empty pattern string -- use %s to match all bytes", quote("?\?"));
 		goto CLEANUP;
 	} else if (*h) {
 		// should be unreachable, but just in case
-		fprintf(stderr, "%s: trailing garbage in pattern string: %s\n", program_name, quote(h));
+		error(0, 0, "trailing garbage in pattern string: %s", quote(h));
 		goto CLEANUP;
 	}
 

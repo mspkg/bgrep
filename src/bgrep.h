@@ -3,12 +3,8 @@
 
 #include "config.h"
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <sys/types.h>
-#include <unistd.h>
-#include <errno.h>
 #include <string.h>
+#include <sys/types.h>
 
 /* gnulib dependencies */
 #include "xstrtol.h"
@@ -65,9 +61,6 @@ enum { MAX_REPEAT_GROUPS = 64 };
 enum { RESULT_MATCH = 0, RESULT_NO_MATCH = 1, RESULT_ERROR = 2};
 
 extern struct bgrep_config params;
-
-/* bgrep.c */
-void die(int status, const char *msg, ...);
 
 /* byte_pattern.c */
 void byte_pattern_init(struct byte_pattern *ptr);
