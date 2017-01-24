@@ -82,11 +82,12 @@ make
 ```
 The binary is saved as `src/bgrep`
 
-Optional build steps:
+>Optional build steps:
 ```bash
 make check
 sudo make install
 ```
+*Note*: `make check` requires [xxd](https://github.com/ThatOtherPerson/xxd) to be installed as well.  It is readily available in Debian, Redhat, Cygwin, and derivative repos.
 
 # Examples
 ### Basic (xxd-style) usage
