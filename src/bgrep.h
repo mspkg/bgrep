@@ -8,18 +8,12 @@
 
 /* gnulib dependencies */
 #include "xstrtol.h"
+#include "minmax.h"
 
 #ifndef STRPREFIX
 #  define STRPREFIX(a, b) (strncmp (a, b, strlen (b)) == 0)
 #endif /* STRPREFIX */
 
-#ifndef MIN
-#  define MIN(X,Y) (((X) < (Y)) ? (X) : (Y))
-#endif /* MIN */
-
-#ifndef MAX
-#  define MAX(X,Y) (((X) < (Y)) ? (Y) : (X))
-#endif /* MAX */
 
 // The Windows/DOS implementation of read(3) opens files in text mode by default,
 // which means that an 0x1A byte is considered the end of the file unless a non-standard
