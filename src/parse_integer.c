@@ -1,5 +1,6 @@
 #include "config.h"
 
+#include <error.h>
 #include <string.h>
 
 #include "quote.h"
