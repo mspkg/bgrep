@@ -50,9 +50,9 @@ void print_match(const char *match, size_t len, off_t file_offset) {
 			break;
 		case OFFSETS:
 			if (params.print_filenames) {
-				printf("%s:%08jx\n", filename, file_offset);
+				printf("%s:%08jx\n", filename, (intmax_t) file_offset);
 			} else {
-				printf("%08jx\n", file_offset);
+				printf("%08jx\n", (intmax_t) file_offset);
 			}
 			break;
 
@@ -154,9 +154,9 @@ static void print_xxd(const char *match, size_t len, off_t file_offset) {
 	while (match < endp) {
 		if (xxd_count == 0) {
 			if (params.print_filenames) {
-				printf("%s:%07jx:", filename, file_offset);
+				printf("%s:%07jx:", filename, (intmax_t) file_offset);
 			} else {
-				printf("%07jx:", file_offset);
+				printf("%07jx:", (intmax_t) file_offset);
 			}
 		}
 

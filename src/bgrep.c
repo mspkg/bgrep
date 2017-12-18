@@ -247,7 +247,7 @@ int searchfile(const char *filename, int fd, const struct byte_pattern *pattern)
 		file_offset = skip(fd, file_offset, params.skip_to);
 		if (file_offset != params.skip_to)
 		{
-			error(0, 0, "Failed to skip ahead to offset 0x%jx", file_offset);
+			error(0, 0, "Failed to skip ahead to offset 0x%jx", (intmax_t) file_offset);
 			result = RESULT_ERROR;
 			goto CLEANUP;
 		}
