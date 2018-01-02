@@ -1,4 +1,4 @@
-AC_INIT([bgrep], [1.0], [rsharo@users.noreply.github.com])
+AC_INIT([bgrep], [1.0.99], [rsharo@users.noreply.github.com])
 AC_CONFIG_AUX_DIR([build-aux])
 AM_INIT_AUTOMAKE([-Wall -Werror foreign])
 AC_PROG_CC
